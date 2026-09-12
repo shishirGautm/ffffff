@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FUTSAL NEPAL Admin</title>
+    <meta name="description" content="FUTSAL NEPAL Admin Dashboard" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  </head>
+  <body>
+    <div id="authScreen" class="auth-screen">
+      <div class="auth-card">
+        <div class="brand-badge">FUTSAL NEPAL</div>
+        <p class="eyebrow">Access portal</p>
+        <h2>Welcome back</h2>
+        <p class="muted">Choose your access type and sign in to continue.</p>
+
+        <div class="access-toggle">
+          <button class="access-btn active" data-role="admin" type="button">Admin</button>
+          <button class="access-btn" data-role="user" type="button">User</button>
+          <button class="access-btn" data-role="owner" type="button">Court owner</button>
+        </div>
+
+        <form id="authLoginForm">
+          <input type="hidden" id="authLoginRole" value="admin" />
+          <label>
+            Email
+            <input type="email" id="authLoginEmail" value="admin@futsalnepal.com" required />
+          </label>
+          <label>
+            Password
+            <input type="password" id="authLoginPassword" value="admin123" required />
+          </label>
+          <button class="btn btn-primary full-width" type="submit">Login</button>
+          <div class="auth-divider"><span>or</span></div>
+          <button class="btn btn-google full-width" id="googleLoginBtn" type="button"><i class="fa-brands fa-google"></i> Continue with Google</button>
+        </form>
+
+        <button class="auth-link" id="showRegisterBtn" type="button">Create an account</button>
+
+        <form id="registerForm" class="hidden" hidden>
+          <div class="auth-form-heading">
+            <h3>Create your account</h3>
+            <p class="muted">Register as a player or court owner.</p>
+          </div>
+          <label>Full name<input type="text" id="registerName" required /></label>
+          <label>Email<input type="email" id="registerEmail" required /></label>
+          <label>Password<input type="password" id="registerPassword" minlength="6" required /></label>
+          <label>Account type<select id="registerRole"><option value="User">Player / User</option><option value="Owner">Court Owner</option></select></label>
+          <button class="btn btn-primary full-width" type="submit">Create account</button>
+          <button class="auth-link" id="showLoginBtn" type="button">Back to login</button>
+        </form>
+
+      </div>
+    </div>
+
+    <div id="userSection" class="user-section hidden">
+      <header class="user-header">
+        <div>
+          <p class="eyebrow text-green">FUTSAL NEPAL</p>
+          <h2>User Portal</h2>
+        </div>
+        <button class="btn btn-secondary" id="userLogoutBtn">Logout</button>
+      </header>
+
+      <div class="user-grid">
+        <div class="user-card">
+          <span class="mini-tag">My bookings</span>
+          <h3 id="userBookingCount">0 upcoming bookings</h3>
+          <p id="userNextBooking">Book a court to see your next match here.</p>
+        </div>
+        <div class="user-card">
+          <span class="mini-tag">Wallet</span>
+          <h3>NPR 4,200</h3>
+          <p>Available credit</p>
+        </div>
+        <div class="user-card">
+          <span class="mini-tag">Teams</span>
+          <h3>2 active teams</h3>
+          <p>Community leagues</p>
+        </div>
+      </div>
+
+      <div class="user-booking-layout">
+        <section class="user-panel">
+          <div class="panel__header">
+            <div>
+              <p class="eyebrow text-green">Reserve a pitch</p>
+              <h3>Book a futsal court</h3>
+            </div>
+          </div>
+          <form id="userBookingForm" class="user-booking-form">
+            <label class="court-search-field">Find futsal by name<input id="userCourtSearch" type="search" placeholder="Search by futsal name" autocomplete="off" /></label>
+            <label>Court<select id="userBookingCourt" required></select></label>
+            <div class="court-location" id="userCourtLocation"><span><span id="userCourtAddress">Select a futsal to see its location.</span><strong id="userCourtAvailability" class="court-availability"></strong></span><a id="userCourtMapLink" class="map-link hidden" href="#" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open map</a></div>
+            <label>Date<input id="userBookingDate" type="date" required /></label>
+            <label>Start time<input id="userBookingStart" type="time" required /></label>
+            <label>Phone<input id="userBookingPhone" type="tel" placeholder="+977-98XXXXXXXX" required /></label>
+            <label>Payment method<select id="userBookingPayment" required><option value="eSewa">eSewa</option><option value="Khalti">Khalti</option><option value="ConnectIPS">ConnectIPS</option><option value="Cash">Cash at venue</option></select></label>
+            <div class="booking-total"><span>Estimated total</span><strong id="userBookingAmount">NPR 0</strong></div>
+            <button class="btn btn-primary" type="submit"><i class="fa-regular fa-calendar-check"></i> Confirm booking</button>
+          </form>
+        </section>
+
+        <section class="user-panel">
+          <div class="panel__header">
+            <div>
+              <p class="eyebrow text-green">Your reservations</p>
+              <h3>My bookings</h3>
+            </div>
+          </div>
+          <div id="userBookingsList" class="user-bookings-list"></div>
+        </section>
+      </div>
+
+      <section class="user-panel user-courts-panel">
+        <div class="panel__header">
+          <div>
+            <p class="eyebrow text-green">Explore venues</p>
+            <h3>Futsal courts in Nepal</h3>
+          </div>
+          <span class="muted" id="userCourtDirectoryCount"></span>
+        </div>
+        <div id="userCourtDirectory" class="user-court-directory"></div>
+      </section>
+    </div>
+
+    <div id="ownerSection" class="user-section hidden">
+      <header class="user-header">
+        <div>
+          <p class="eyebrow text-green">FUTSAL NEPAL</p>
+          <h2>Owner Portal</h2>
+          <p class="muted">Manage your court availability, pricing and bookings.</p>
+        </div>
+        <button class="btn btn-secondary" id="ownerLogoutBtn">Logout</button>
+      </header>
+      <div id="ownerCourtPanel" class="owner-portal-grid"></div>
+      <section class="user-panel">
+        <div class="panel__header"><div><p class="eyebrow text-green">Reservations</p><h3>Bookings for your courts</h3></div></div>
+        <div id="ownerBookingsList" class="owner-bookings-list"></div>
+      </section>
+    </div>
+
+    <div id="app-shell" class="app-shell hidden">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar__brand">
+          <div class="brand-mark">
+            <img src="assets/logo.svg" alt="Futsal Nepal" />
+          </div>
+          <div>
+            <div class="brand-name">FUTSAL NEPAL</div>
+            <small>BOOK • PLAY • CONNECT</small>
+          </div>
+        </div>
+
+        <nav class="sidebar__nav" aria-label="Sidebar navigation">
+          <button class="nav-link active" data-view="dashboard"><i class="fa-solid fa-house"></i><span>Dashboard</span></button>
+          <button class="nav-link" data-view="courts"><i class="fa-solid fa-futbol"></i><span>Courts</span></button>
+          <button class="nav-link" data-view="bookings"><i class="fa-regular fa-calendar-check"></i><span>Bookings</span></button>
+          <button class="nav-link" data-view="users"><i class="fa-solid fa-users"></i><span>Users</span></button>
+          <button class="nav-link" data-view="teams"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
+          <button class="nav-link" data-view="matches"><i class="fa-solid fa-trophy"></i><span>Matches</span></button>
+          <button class="nav-link" data-view="tournaments"><i class="fa-solid fa-medal"></i><span>Tournaments</span></button>
+          <button class="nav-link" data-view="communities"><i class="fa-solid fa-comments"></i><span>Communities</span></button>
+          <button class="nav-link" data-view="payments"><i class="fa-solid fa-wallet"></i><span>Payments</span></button>
+          <button class="nav-link" data-view="reviews"><i class="fa-solid fa-star"></i><span>Reviews</span></button>
+          <button class="nav-link" data-view="notifications"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
+          <button class="nav-link" data-view="reports"><i class="fa-solid fa-chart-line"></i><span>Reports &amp; Analytics</span></button>
+          <button class="nav-link" data-view="admins"><i class="fa-solid fa-shield-halved"></i><span>Admins</span></button>
+          <button class="nav-link" data-view="settings"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+          <button class="nav-link logout-link" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></button>
+        </nav>
+
+        <div class="sidebar__profile">
+          <div class="profile-avatar">AN</div>
+          <div>
+            <strong>Admin Nepal</strong>
+            <small>Administrator</small>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar__left">
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+              <i class="fa-solid fa-bars"></i>
+            </button>
+            <div>
+              <p class="eyebrow">Operational overview</p>
+              <h1 id="pageTitle">Dashboard</h1>
+            </div>
+          </div>
+
+          <div class="topbar__actions">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="search" id="globalSearch" placeholder="Search" />
+            </div>
+            <button class="icon-btn" aria-label="Notifications">
+              <i class="fa-solid fa-bell"></i>
+              <span class="badge">4</span>
+            </button>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+              <i class="fa-solid fa-moon"></i>
+            </button>
+            <div class="user-menu">
+              <div class="avatar-mini">AN</div>
+              <div>
+                <strong>Admin Nepal</strong>
+                <small>Super Admin</small>
+              </div>
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
+          </div>
+        </header>
+
+        <div class="content-wrap">
+          <section id="dashboard-section" class="page-section active" data-page="dashboard">
+            <div class="hero-card">
+              <div>
+                <p class="eyebrow text-green">Good Morning, Admin 👋</p>
+                <h2>Here's what's happening with Futsal Nepal today.</h2>
+              </div>
+              <div class="hero-actions">
+                <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> New Booking</button>
+                <button class="btn btn-secondary"><i class="fa-solid fa-download"></i> Export Report</button>
+              </div>
+            </div>
+            <div id="statsGrid" class="stats-grid"></div>
+            <div class="analytics-grid">
+              <div class="panel chart-panel large">
+                <div class="panel__header">
+                  <div>
+                    <p class="eyebrow">Overview</p>
+                    <h3>Booking Analytics</h3>
+                  </div>
+                  <div class="segmented-control" id="bookingRangeTabs">
+                    <button class="active" data-range="today">Today</button>
+                    <button data-range="7d">7 Days</button>
+                    <button data-range="30d">30 Days</button>
+                    <button data-range="3m">3 Months</button>
+                    <button data-range="1y">1 Year</button>
+                  </div>
+                </div>
+                <canvas id="bookingChart"></canvas>
+              </div>
+
+              <div class="panel chart-panel">
+                <div class="panel__header">
+                  <div>
+                    <p class="eyebrow">Revenue</p>
+                    <h3>Revenue Analytics</h3>
+                  </div>
+                </div>
+                <canvas id="revenueChart"></canvas>
+              </div>
+
+              <div class="panel chart-panel">
+                <div class="panel__header">
+                  <div>
+                    <p class="eyebrow">Users</p>
+                    <h3>User Growth</h3>
+                  </div>
+                </div>
+                <canvas id="userGrowthChart"></canvas>
+              </div>
+
+              <div class="panel chart-panel">
+                <div class="panel__header">
+                  <div>
+                    <p class="eyebrow">Top courts</p>
+                    <h3>Popular Courts</h3>
+                  </div>
+                </div>
+                <div id="popularCourtsList" class="rank-list"></div>
+              </div>
+
+              <div class="panel chart-panel">
+                <div class="panel__header">
+                  <div>
+                    <p class="eyebrow">Status</p>
+                    <h3>Booking Status</h3>
+                  </div>
+                </div>
+                <canvas id="bookingStatusChart"></canvas>
+              </div>
+            </div>
+          </section>
+
+          <section id="courts-section" class="page-section" data-page="courts">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Operations</p>
+                <h2>Courts</h2>
+              </div>
+              <button class="btn btn-primary" id="addCourtBtn"><i class="fa-solid fa-plus"></i> Add Court</button>
+            </div>
+            <div class="table-controls">
+              <div class="search-box compact"><i class="fa-solid fa-magnifying-glass"></i><input id="courtSearch" type="search" placeholder="Search courts" /></div>
+              <button class="btn btn-secondary" id="toggleCourtViewBtn"><i class="fa-solid fa-table-cells"></i> Card View</button>
+            </div>
+            <div id="courtsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="bookings-section" class="page-section" data-page="bookings">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Operations</p>
+                <h2>Bookings</h2>
+              </div>
+              <button class="btn btn-primary" id="addBookingBtn"><i class="fa-solid fa-plus"></i> New Booking</button>
+            </div>
+            <div class="table-controls">
+              <div class="search-box compact"><i class="fa-solid fa-magnifying-glass"></i><input id="bookingSearch" type="search" placeholder="Search bookings" /></div>
+              <select id="bookingStatusFilter"><option value="all">All status</option></select>
+            </div>
+            <div id="bookingsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="users-section" class="page-section" data-page="users">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Community</p>
+                <h2>Users</h2>
+              </div>
+              <button class="btn btn-primary"><i class="fa-solid fa-user-plus"></i> Add User</button>
+            </div>
+            <div id="usersTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="teams-section" class="page-section" data-page="teams">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Community</p>
+                <h2>Teams</h2>
+              </div>
+              <button class="btn btn-primary"><i class="fa-solid fa-people-group"></i> Create Team</button>
+            </div>
+            <div id="teamsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="matches-section" class="page-section" data-page="matches">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Events</p>
+                <h2>Matches</h2>
+              </div>
+              <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Schedule Match</button>
+            </div>
+            <div id="matchesTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="tournaments-section" class="page-section" data-page="tournaments">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Events</p>
+                <h2>Tournaments</h2>
+              </div>
+              <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Create Tournament</button>
+            </div>
+            <div id="tournamentsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="communities-section" class="page-section" data-page="communities">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Community</p>
+                <h2>Communities</h2>
+              </div>
+            </div>
+            <div class="empty-state"><i class="fa-solid fa-comments"></i><h3>Community feeds are ready for integration</h3><p>Connect the app with your Firebase collections to manage posts and groups.</p></div>
+          </section>
+
+          <section id="payments-section" class="page-section" data-page="payments">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Finance</p>
+                <h2>Payments</h2>
+              </div>
+            </div>
+            <div id="paymentsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="reviews-section" class="page-section" data-page="reviews">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Feedback</p>
+                <h2>Reviews &amp; Ratings</h2>
+              </div>
+            </div>
+            <div id="reviewsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="notifications-section" class="page-section" data-page="notifications">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Engagement</p>
+                <h2>Notifications</h2>
+              </div>
+              <button class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Send Alert</button>
+            </div>
+            <div id="notificationsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="reports-section" class="page-section" data-page="reports">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Analytics</p>
+                <h2>Reports &amp; Analytics</h2>
+              </div>
+              <button class="btn btn-secondary"><i class="fa-solid fa-download"></i> Export CSV</button>
+            </div>
+            <div id="reportsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="admins-section" class="page-section" data-page="admins">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">Security</p>
+                <h2>Admins</h2>
+              </div>
+              <button class="btn btn-primary"><i class="fa-solid fa-user-shield"></i> Add Admin</button>
+            </div>
+            <div id="adminsTableContainer" class="data-card table-card"></div>
+          </section>
+
+          <section id="settings-section" class="page-section" data-page="settings">
+            <div class="section-toolbar">
+              <div>
+                <p class="eyebrow">System</p>
+                <h2>Settings</h2>
+              </div>
+            </div>
+            <div class="settings-grid">
+              <div class="panel">
+                <div class="panel__header"><h3>Firebase configuration</h3></div>
+                <p class="muted">Update the Firebase values in the config file to connect the dashboard to your project.</p>
+                <button class="btn btn-primary" id="seedDemoDataBtn">Load demo data</button>
+              </div>
+              <div class="panel">
+                <div class="panel__header"><h3>Branding</h3></div>
+                <div class="field-grid">
+                  <label>App name <input type="text" value="FUTSAL NEPAL" /></label>
+                  <label>Tagline <input type="text" value="BOOK • PLAY • CONNECT" /></label>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div id="loginModal" class="modal hidden" aria-hidden="true">
+      <div class="modal__backdrop"></div>
+      <div class="modal__pane login-pane">
+        <div class="brand-badge">FUTSAL NEPAL</div>
+        <h2>Admin Login</h2>
+        <p class="muted">Sign in to manage courts, bookings and memberships.</p>
+        <form id="loginForm">
+          <label>
+            Email
+            <input type="email" id="loginEmail" value="admin@futsalnepal.com" required />
+          </label>
+          <label>
+            Password
+            <input type="password" id="loginPassword" value="admin123" required />
+          </label>
+          <button class="btn btn-primary full-width" type="submit">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="genericModal" class="modal hidden" aria-hidden="true">
+      <div class="modal__backdrop"></div>
+      <div class="modal__pane" id="genericModalBody"></div>
+    </div>
+
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-data.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/user-portal.js"></script>
+    <script src="js/owner-portal.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/courts.js"></script>
+    <script src="js/bookings.js"></script>
+    <script src="js/users.js"></script>
+    <script src="js/teams.js"></script>
+    <script src="js/matches.js"></script>
+    <script src="js/tournaments.js"></script>
+    <script src="js/payments.js"></script>
+    <script src="js/reviews.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/reports.js"></script>
+    <script src="js/admins.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
