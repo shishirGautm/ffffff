@@ -6,14 +6,14 @@ window.FNAdminCourts.getRows = function(searchTerm) {
   const filtered = !query ? courts : courts.filter((court) => [court.name, court.city, court.address].join(' ').toLowerCase().includes(query));
 
   return filtered.map((court) => [
-    '<img class="court-thumb" src="https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=120&q=80" alt="' + court.name + '" />',
+    '<img class="court-thumb" src="' + ((court.images && court.images[0]) || 'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=120&q=80') + '" alt="' + court.name + '" />',
     '<div class="table-court"><div><strong>' + court.name + '</strong><small>' + court.owner + '</small></div></div>',
     court.city + '<br><small>' + court.address + '</small>',
-    'NPR ' + court.pricePerHour.toLocaleString(),
+    'NPR ' + Number(court.pricePerHour || 0).toLocaleString(),
     '<span>' + (court.rating || 4.5) + ' ★</span>',
     '<strong>' + (court.bookings || 0) + '</strong>',
     window.FNAdminComponents.getStatusBadge(court.status),
-    '<div class="action-group"><button class="icon-button" title="View"><i class="fa-solid fa-eye"></i></button><button class="icon-button" title="Edit"><i class="fa-solid fa-pen"></i></button><button class="icon-button danger" title="Delete"><i class="fa-solid fa-trash"></i></button></div>'
+    '<div class="action-group"><button class="icon-button" data-court-action="view" data-court-id="' + court.id + '" title="View"><i class="fa-solid fa-eye"></i></button><button class="icon-button" data-court-action="edit" data-court-id="' + court.id + '" title="Edit"><i class="fa-solid fa-pen"></i></button><button class="icon-button danger" data-court-action="delete" data-court-id="' + court.id + '" title="Delete"><i class="fa-solid fa-trash"></i></button></div>'
   ]);
 };
 
@@ -26,23 +26,49 @@ window.FNAdminCourts.render = function() {
   const rows = this.getRows(searchTerm);
   window.FNAdminComponents.renderTable({ headers, rows, targetId: 'courtsTableContainer', emptyMessage: 'No courts match your search.' });
 
-  const modalButtons = target.querySelectorAll('.icon-button');
+  const modalButtons = target.querySelectorAll('.icon-button[data-court-action]');
   modalButtons.forEach((btn) => {
     btn.addEventListener('click', function() {
-      const row = this.closest('tr');
-      if (!row) return;
-      window.FNAdminCourts.openForm();
+      const court = window.FNAdmin.state.courts.find((item) => item.id === this.dataset.courtId);
+      if (!court) return;
+      if (this.dataset.courtAction === 'edit') window.FNAdminCourts.openForm(court);
+      if (this.dataset.courtAction === 'delete') window.FNAdminCourts.deleteCourt(court);
+      if (this.dataset.courtAction === 'view') window.FNAdminCourts.openForm(court);
     });
   });
 };
 
+window.FNAdminCourts.deleteCourt = function(court) {
+  if (!window.confirm('Delete "' + court.name + '" permanently?')) return;
+
+  const index = window.FNAdmin.state.courts.findIndex((item) => item.id === court.id);
+  const remove = window.FNAdminData.isLive()
+    ? window.FNAdminData.remove('courts', court.id)
+    : Promise.resolve();
+  remove.then(() => {
+    if (index >= 0) window.FNAdmin.state.courts.splice(index, 1);
+    window.FNAdminApp.renderAll();
+    window.dispatchEvent(new CustomEvent('fn:courts-changed', { detail: { deletedCourtId: court.id } }));
+    window.FNAdminComponents.showToast('Court deleted successfully.', 'success');
+  }).catch((error) => {
+    console.error('Unable to delete court:', error);
+    window.FNAdminComponents.showToast('Court could not be deleted (' + (error.code || 'error') + '): ' + (error.message || 'permission denied.'), 'error');
+  });
+};
+
 window.FNAdminCourts.openForm = function(court = null) {
+  const owners = (window.FNAdmin.state.users || []).filter((user) => user.role === 'Owner');
+  const currentOwnerId = court && court.ownerId ? court.ownerId : '';
+  const ownerOptions = owners.length
+    ? owners.map((owner) => '<option value="' + owner.id + '" ' + (owner.id === currentOwnerId || owner.name === (court && court.owner) ? 'selected' : '') + '>' + owner.name + ' (' + owner.email + ')</option>').join('')
+    : '<option value="' + currentOwnerId + '" selected>' + ((court && court.owner) || 'No owners found') + '</option>';
   const formHtml = `
     <div class="panel__header"><div><p class="eyebrow">Court</p><h3>${court ? 'Edit Court' : 'Add Court'}</h3></div><button class="icon-button" data-close-modal="true"><i class="fa-solid fa-xmark"></i></button></div>
     <form id="courtForm">
       <div class="field-grid">
         <label>Court Name<input name="name" value="${court ? court.name : ''}" required /></label>
-        <label>Owner<input name="owner" value="${court ? court.owner : ''}" required /></label>
+        <label>Court Owner<select name="ownerId" required>${ownerOptions}</select></label>
+        <label>Futsal Photo<input name="photo" type="file" accept="image/*" /></label>
         <label>Address<input name="address" value="${court ? court.address : ''}" required /></label>
         <label>City<input name="city" value="${court ? court.city : ''}" required /></label>
         <label>District<input name="district" value="${court ? court.district : ''}" /></label>
@@ -70,11 +96,20 @@ window.FNAdminCourts.openForm = function(court = null) {
   if (form) {
     form.addEventListener('submit', function(event) {
       event.preventDefault();
+      const submitButton = form.querySelector('button[type="submit"]');
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Saving...';
+      }
       const formData = new FormData(form);
+      const photo = formData.get('photo');
+      const ownerId = formData.get('ownerId');
+      const ownerProfile = (window.FNAdmin.state.users || []).find((user) => user.id === ownerId);
       const newCourt = {
         id: court ? court.id : 'court-' + Date.now(),
         name: formData.get('name'),
-        owner: formData.get('owner'),
+        owner: ownerProfile ? ownerProfile.name : (court ? court.owner : ''),
+        ownerId,
         address: formData.get('address'),
         city: formData.get('city'),
         district: formData.get('district') || 'Kathmandu',
@@ -85,22 +120,42 @@ window.FNAdminCourts.openForm = function(court = null) {
         closingTime: formData.get('closingTime') || '22:00',
         type: formData.get('type') || 'Indoor',
         status: formData.get('status') || 'active',
+        images: court && Array.isArray(court.images) ? court.images : [],
         bookingCount: 0,
         rating: 4.7
       };
 
-      if (court) {
-        const index = window.FNAdmin.state.courts.findIndex((item) => item.id === court.id);
-        if (index >= 0) window.FNAdmin.state.courts[index] = { ...window.FNAdmin.state.courts[index], ...newCourt };
-      } else {
-        window.FNAdmin.state.courts.push(newCourt);
-      }
+      const saveCourt = (imageUrl) => {
+        if (imageUrl) newCourt.images = [imageUrl];
+        if (court) {
+          const index = window.FNAdmin.state.courts.findIndex((item) => item.id === court.id);
+          if (index >= 0) window.FNAdmin.state.courts[index] = { ...window.FNAdmin.state.courts[index], ...newCourt };
+        } else {
+          window.FNAdmin.state.courts.push(newCourt);
+        }
+        return window.FNAdmin.syncCourt(newCourt);
+      };
 
-      window.FNAdminComponents.closeModal();
-      window.FNAdmin.syncCourt(newCourt).then(() => {
+      const upload = photo && photo.size
+        ? window.FNAdminData.uploadAsset(photo, 'courts/' + newCourt.id + '/' + photo.name)
+        : Promise.resolve('');
+      upload.then(saveCourt).then(() => {
+        window.FNAdminComponents.closeModal();
         window.FNAdminApp.renderAll();
         window.FNAdminComponents.showToast('Court saved successfully.', 'success');
-      }).catch(() => window.FNAdminComponents.showToast('Court saved locally, but live sync failed.', 'error'));
+      }).catch((error) => {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = 'Save Court';
+        }
+        console.error('Unable to save court:', error);
+        const message = error && error.code === 'permission-denied'
+          ? 'Permission denied. Make sure this Firebase account is registered in the admins collection.'
+          : error && error.message
+            ? error.message
+            : 'Check Firebase Storage and Firestore configuration.';
+        window.FNAdminComponents.showToast('Court could not be saved: ' + message, 'error');
+      });
     });
   }
 };

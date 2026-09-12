@@ -18,7 +18,7 @@ service cloud.firestore {
     }
 
     function ownsCourt(courtId) {
-      return isAuthenticated() && exists(/databases/$(database)/documents/courts/$(courtId)) && get(/databases/$(database)/documents/courts/$(courtId)).data.ownerId == request.auth.uid;
+      return isAuthenticated() && exists(/databases/$(database)/documents/courts/$(courtId)) && (get(/databases/$(database)/documents/courts/$(courtId)).data.ownerId == request.auth.uid || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name == get(/databases/$(database)/documents/courts/$(courtId)).data.owner));
     }
 
     match /users/{userId} {
@@ -29,25 +29,38 @@ service cloud.firestore {
     match /courts/{courtId} {
       allow read: if isAuthenticated();
       allow create, delete: if isStaff();
-      allow update: if isStaff() || (ownsCourt(courtId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pricePerHour', 'status', 'openingTime', 'closingTime']));
+      allow update: if isStaff() || (ownsCourt(courtId) && request.resource.data.ownerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'images', 'pricePerHour', 'status', 'openingTime', 'closingTime', 'ownerId']));
     }
 
     match /bookings/{bookingId} {
       allow read: if isAuthenticated() && (isStaff() || resource.data.userId == request.auth.uid || ownsCourt(resource.data.courtId));
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Cancelled' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus'])) || (ownsCourt(resource.data.courtId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus']));
+      allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Pending') || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Cancelled' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus'])) || (ownsCourt(resource.data.courtId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus']));
       allow delete: if isStaff();
     }
 
     match /payments/{paymentId} {
       allow read: if isAuthenticated() && (isStaff() || resource.data.userId == request.auth.uid || ownsCourt(resource.data.courtId));
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'Pending';
-      allow update, delete: if isStaff();
+      allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'Pending');
+      allow delete: if isStaff();
     }
 
     match /admins/{adminId} {
       allow read: if isAuthenticated() && (request.auth.uid == adminId || isStaff());
       allow write: if isSuperAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create: if isStaff() || (isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.targetUserId == request.auth.uid);
+      allow update, delete: if isStaff();
+    }
+
+    match /bookingSlots/{slotId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isStaff();
     }
 
     match /{document=**} {

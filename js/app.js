@@ -60,13 +60,14 @@ document.addEventListener('DOMContentLoaded', function() {
       window.FNAdminDashboard.renderStats();
     }
     if (window.FNAdminAuth.getRole() === 'User' && window.FNUserPortal) window.FNUserPortal.renderBookings();
+    if (window.FNAdminAuth.getRole() === 'Owner' && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
   window.addEventListener('fn:bookings-error', () => window.FNAdminComponents.showToast('Live booking updates are temporarily unavailable.', 'error'));
   window.addEventListener('fn:collection-changed', function(event) {
     const collection = event.detail && event.detail.collection;
     if (window.FNAdminAuth.getRole() === 'Admin') window.FNAdminApp.renderAll();
-    if (window.FNAdminAuth.getRole() === 'User' && collection === 'courts' && window.FNUserPortal) window.FNUserPortal.init();
-    if (window.FNAdminAuth.getRole() === 'Owner' && collection === 'courts' && window.FNOwnerPortal) window.FNOwnerPortal.render();
+    if (window.FNAdminAuth.getRole() === 'User' && ['courts', 'notifications'].includes(collection) && window.FNUserPortal) window.FNUserPortal.init();
+    if (window.FNAdminAuth.getRole() === 'Owner' && ['courts', 'notifications'].includes(collection) && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
   window.addEventListener('fn:collection-error', (event) => window.FNAdminComponents.showToast('Unable to load live ' + event.detail.collection + ' data.', 'error'));
   window.addEventListener('fn:courts-changed', function() {

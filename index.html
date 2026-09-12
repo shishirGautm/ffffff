@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/responsive.css" />
+    <link rel="stylesheet" href="css/style.css?v=20260912" />
+    <link rel="stylesheet" href="css/responsive.css?v=20260912" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -35,11 +35,11 @@
           <input type="hidden" id="authLoginRole" value="admin" />
           <label>
             Email
-            <input type="email" id="authLoginEmail" value="admin@futsalnepal.com" required />
+            <input type="email" id="authLoginEmail" value="" required />
           </label>
           <label>
             Password
-            <input type="password" id="authLoginPassword" value="admin123" required />
+            <input type="password" id="authLoginPassword" value="" required />
           </label>
           <button class="btn btn-primary full-width" type="submit">Login</button>
           <div class="auth-divider"><span>or</span></div>
@@ -65,34 +65,61 @@
     </div>
 
     <div id="userSection" class="user-section hidden">
-      <header class="user-header">
+      <div class="user-dashboard-shell">
+        <aside class="user-sidebar">
+          <div class="user-sidebar-brand">
+            <div class="brand-mark"><img src="assets/logo.svg" alt="Futsal Nepal" /></div>
+            <strong>FUTSAL NEPAL</strong>
+          </div>
+          <nav class="user-sidebar-nav" aria-label="User navigation">
+            <button type="button" class="active" data-user-scroll="userDashboardTop"><i class="fa-solid fa-house"></i><span>Dashboard</span></button>
+            <button type="button" data-user-scroll="userBookingsPanel"><i class="fa-regular fa-calendar-check"></i><span>My bookings</span></button>
+            <button type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-futbol"></i><span>Find a futsal</span></button>
+            <button type="button" data-user-scroll="userTeamCount"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
+          </nav>
+          <label class="user-nav-dropdown">Go to section<select id="userNavSelect"><option value="userDashboardTop">Dashboard</option><option value="userBookingsPanel">My bookings</option><option value="userCourtsPanel">Find a futsal</option><option value="userTeamCount">Teams</option></select></label>
+          <div class="user-sidebar-note"><i class="fa-solid fa-circle-check"></i><span>Book your next match in a few clicks.</span></div>
+        </aside>
+
+        <main class="user-dashboard-main" id="userDashboardTop">
+          <header class="user-header">
         <div>
           <p class="eyebrow text-green">FUTSAL NEPAL</p>
-          <h2>User Portal</h2>
+          <h2>Welcome back, <span id="userDisplayName">player</span></h2>
+          <p class="muted">Find a pitch, manage your bookings, and keep your next match in sight.</p>
         </div>
         <button class="btn btn-secondary" id="userLogoutBtn">Logout</button>
-      </header>
+          </header>
 
-      <div class="user-grid">
+          <section class="user-dashboard-banner">
+        <div>
+          <p class="eyebrow text-green">Your match dashboard</p>
+          <h3>Ready for your next game?</h3>
+          <p>Choose a nearby futsal court and reserve an available hour.</p>
+        </div>
+        <button class="btn btn-primary" type="button" id="findCourtBtn"><i class="fa-solid fa-location-dot"></i> Find a futsal</button>
+          </section>
+
+          <div class="user-grid">
         <div class="user-card">
           <span class="mini-tag">My bookings</span>
           <h3 id="userBookingCount">0 upcoming bookings</h3>
           <p id="userNextBooking">Book a court to see your next match here.</p>
         </div>
         <div class="user-card">
-          <span class="mini-tag">Wallet</span>
-          <h3>NPR 4,200</h3>
-          <p>Available credit</p>
+          <span class="mini-tag">Available futsals</span>
+          <h3 id="userVenueCount">0 venues</h3>
+          <p>Courts ready for booking</p>
         </div>
         <div class="user-card">
           <span class="mini-tag">Teams</span>
-          <h3>2 active teams</h3>
+          <h3 id="userTeamCount">0 teams</h3>
           <p>Community leagues</p>
         </div>
-      </div>
+          </div>
 
-      <div class="user-booking-layout">
-        <section class="user-panel">
+          <div class="user-booking-layout">
+            <section class="user-panel" id="userBookingPanel">
           <div class="panel__header">
             <div>
               <p class="eyebrow text-green">Reserve a pitch</p>
@@ -104,7 +131,7 @@
             <label>Court<select id="userBookingCourt" required></select></label>
             <div class="court-location" id="userCourtLocation"><span><span id="userCourtAddress">Select a futsal to see its location.</span><strong id="userCourtAvailability" class="court-availability"></strong></span><a id="userCourtMapLink" class="map-link hidden" href="#" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open map</a></div>
             <label>Date<input id="userBookingDate" type="date" required /></label>
-            <label>Start time<input id="userBookingStart" type="time" required /></label>
+            <label>Time slot<select id="userBookingTime" required></select></label>
             <label>Phone<input id="userBookingPhone" type="tel" placeholder="+977-98XXXXXXXX" required /></label>
             <label>Payment method<select id="userBookingPayment" required><option value="eSewa">eSewa</option><option value="Khalti">Khalti</option><option value="ConnectIPS">ConnectIPS</option><option value="Cash">Cash at venue</option></select></label>
             <div class="booking-total"><span>Estimated total</span><strong id="userBookingAmount">NPR 0</strong></div>
@@ -112,7 +139,7 @@
           </form>
         </section>
 
-        <section class="user-panel">
+          <section class="user-panel" id="userBookingsPanel">
           <div class="panel__header">
             <div>
               <p class="eyebrow text-green">Your reservations</p>
@@ -121,9 +148,9 @@
           </div>
           <div id="userBookingsList" class="user-bookings-list"></div>
         </section>
-      </div>
+          </div>
 
-      <section class="user-panel user-courts-panel">
+          <section class="user-panel user-courts-panel" id="userCourtsPanel">
         <div class="panel__header">
           <div>
             <p class="eyebrow text-green">Explore venues</p>
@@ -132,7 +159,13 @@
           <span class="muted" id="userCourtDirectoryCount"></span>
         </div>
         <div id="userCourtDirectory" class="user-court-directory"></div>
-      </section>
+          </section>
+          <section class="user-panel user-notifications-panel" id="userNotificationsPanel">
+            <div class="panel__header"><div><p class="eyebrow text-green">Updates</p><h3>Notifications</h3></div></div>
+            <div id="userNotificationsList" class="user-notifications-list"></div>
+          </section>
+        </main>
+      </div>
     </div>
 
     <div id="ownerSection" class="user-section hidden">
@@ -148,6 +181,10 @@
       <section class="user-panel">
         <div class="panel__header"><div><p class="eyebrow text-green">Reservations</p><h3>Bookings for your courts</h3></div></div>
         <div id="ownerBookingsList" class="owner-bookings-list"></div>
+      </section>
+      <section class="user-panel user-notifications-panel">
+        <div class="panel__header"><div><p class="eyebrow text-green">Updates</p><h3>Notifications</h3></div></div>
+        <div id="ownerNotificationsList" class="user-notifications-list"></div>
       </section>
     </div>
 
@@ -232,10 +269,6 @@
                 <p class="eyebrow text-green">Good Morning, Admin 👋</p>
                 <h2>Here's what's happening with Futsal Nepal today.</h2>
               </div>
-              <div class="hero-actions">
-                <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> New Booking</button>
-                <button class="btn btn-secondary"><i class="fa-solid fa-download"></i> Export Report</button>
-              </div>
             </div>
             <div id="statsGrid" class="stats-grid"></div>
             <div class="analytics-grid">
@@ -319,7 +352,6 @@
                 <p class="eyebrow">Operations</p>
                 <h2>Bookings</h2>
               </div>
-              <button class="btn btn-primary" id="addBookingBtn"><i class="fa-solid fa-plus"></i> New Booking</button>
             </div>
             <div class="table-controls">
               <div class="search-box compact"><i class="fa-solid fa-magnifying-glass"></i><input id="bookingSearch" type="search" placeholder="Search bookings" /></div>
@@ -408,7 +440,7 @@
                 <p class="eyebrow">Engagement</p>
                 <h2>Notifications</h2>
               </div>
-              <button class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Send Alert</button>
+              <button class="btn btn-primary" id="addNotificationBtn"><i class="fa-solid fa-paper-plane"></i> Send Alert</button>
             </div>
             <div id="notificationsTableContainer" class="data-card table-card"></div>
           </section>
@@ -419,7 +451,6 @@
                 <p class="eyebrow">Analytics</p>
                 <h2>Reports &amp; Analytics</h2>
               </div>
-              <button class="btn btn-secondary"><i class="fa-solid fa-download"></i> Export CSV</button>
             </div>
             <div id="reportsTableContainer" class="data-card table-card"></div>
           </section>
@@ -488,24 +519,24 @@
 
     <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-    <script src="js/firebase-config.js"></script>
-    <script src="js/firebase-data.js"></script>
+    <script src="js/firebase-config.js?v=20260912-6"></script>
+    <script src="js/firebase-data.js?v=20260912-2"></script>
     <script src="js/components.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/user-portal.js"></script>
-    <script src="js/owner-portal.js"></script>
-    <script src="js/dashboard.js"></script>
-    <script src="js/courts.js"></script>
-    <script src="js/bookings.js"></script>
-    <script src="js/users.js"></script>
+    <script src="js/auth.js?v=20260912-2"></script>
+    <script src="js/user-portal.js?v=20260912-4"></script>
+    <script src="js/owner-portal.js?v=20260912-3"></script>
+    <script src="js/dashboard.js?v=20260912-3"></script>
+    <script src="js/courts.js?v=20260912-2"></script>
+    <script src="js/bookings.js?v=20260912-2"></script>
+    <script src="js/users.js?v=20260912-3"></script>
     <script src="js/teams.js"></script>
     <script src="js/matches.js"></script>
     <script src="js/tournaments.js"></script>
     <script src="js/payments.js"></script>
     <script src="js/reviews.js"></script>
-    <script src="js/notifications.js"></script>
+    <script src="js/notifications.js?v=20260912-2"></script>
     <script src="js/reports.js"></script>
-    <script src="js/admins.js"></script>
+    <script src="js/admins.js?v=20260912-2"></script>
     <script src="js/settings.js"></script>
     <script src="js/app.js"></script>
   </body>

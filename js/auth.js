@@ -68,6 +68,7 @@ window.FNAdminAuth.login = function(email, password, role = 'admin') {
         const profileWrite = profile.role === 'User' ? window.FNAdminData.save('users', uid, { id: uid, email, name: profile.name, updatedAt: new Date().toISOString() }) : Promise.resolve();
         return profileWrite.then(() => window.FNAdminData.loadState(profile.role)).then(() => {
           window.FNAdminData.subscribeState(profile.role);
+          window.FNAdmin.subscribeToBookings();
           window.FNAdminComponents.showToast('Welcome back, ' + profile.name + '.', 'success');
           return true;
         });
@@ -111,6 +112,7 @@ window.FNAdminAuth.loginWithGoogle = function() {
       const profileWrite = profile.role === 'User' ? window.FNAdminData.save('users', firebaseUser.uid, { id: firebaseUser.uid, email: firebaseUser.email, name: profile.name, updatedAt: new Date().toISOString() }) : Promise.resolve();
       return profileWrite.then(() => window.FNAdminData.loadState(profile.role)).then(() => {
         window.FNAdminData.subscribeState(profile.role);
+        window.FNAdmin.subscribeToBookings();
         window.FNAdminComponents.showToast('Welcome back, ' + profile.name + '.', 'success');
         window.FNAdminApp.renderAll();
         return true;
@@ -285,6 +287,7 @@ window.FNAdminAuth.init = function() {
         this.setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: profile.name, role: profile.role });
         return window.FNAdminData.loadState(profile.role).then(() => {
           window.FNAdminData.subscribeState(profile.role);
+          window.FNAdmin.subscribeToBookings();
           window.FNAdminApp.renderAll();
         });
       }).catch((error) => window.FNAdminComponents.showToast('Unable to load your Firebase profile: ' + error.message, 'error'));

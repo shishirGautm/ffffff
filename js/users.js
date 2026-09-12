@@ -9,7 +9,7 @@ window.FNAdminUsers.getRows = function() {
     user.bookings,
     user.joined,
     window.FNAdminComponents.getStatusBadge(user.status),
-    '<div class="action-group"><button class="icon-button" data-user-action="view" data-user-id="' + user.id + '" title="View"><i class="fa-solid fa-eye"></i></button><button class="icon-button" data-user-action="toggle-status" data-user-id="' + user.id + '" title="Toggle status"><i class="fa-solid fa-user-lock"></i></button></div>'
+    '<div class="action-group"><button class="icon-button" data-user-action="view" data-user-id="' + user.id + '" title="View"><i class="fa-solid fa-eye"></i></button><button class="icon-button" data-user-action="toggle-status" data-user-id="' + user.id + '" title="Toggle status"><i class="fa-solid fa-user-lock"></i></button><button class="btn btn-danger user-delete-button" data-user-action="delete" data-user-id="' + user.id + '" title="Delete user"><i class="fa-solid fa-trash"></i> Delete</button></div>'
   ]);
 };
 
@@ -24,6 +24,20 @@ window.FNAdminUsers.render = function() {
 window.FNAdminUsers.handleAction = function(action, userId) {
   const user = window.FNAdmin.state.users.find((item) => item.id === userId);
   if (!user) return;
+  if (action === 'delete') {
+    if (!window.confirm('Delete user profile "' + user.name + '" permanently?')) return;
+    const index = window.FNAdmin.state.users.findIndex((item) => item.id === userId);
+    const remove = window.FNAdminData.isLive() ? window.FNAdminData.remove('users', userId) : Promise.resolve();
+    remove.then(() => {
+      if (index >= 0) window.FNAdmin.state.users.splice(index, 1);
+      this.render();
+      window.FNAdminComponents.showToast('User profile deleted successfully.', 'success');
+    }).catch((error) => {
+      console.error('Unable to delete user profile:', error);
+      window.FNAdminComponents.showToast('User could not be deleted: ' + (error.message || 'permission denied.'), 'error');
+    });
+    return;
+  }
   if (action === 'view') {
     window.FNAdminComponents.openModal('<div class="panel__header"><div><p class="eyebrow">User profile</p><h3>' + user.name + '</h3></div><button class="icon-button" data-close-modal="true"><i class="fa-solid fa-xmark"></i></button></div><div class="detail-list"><div><span>Email</span><strong>' + user.email + '</strong></div><div><span>Phone</span><strong>' + user.phone + '</strong></div><div><span>Location</span><strong>' + user.location + '</strong></div><div><span>Bookings</span><strong>' + user.bookings + '</strong></div></div>');
     document.querySelectorAll('[data-close-modal="true"]').forEach((button) => button.addEventListener('click', window.FNAdminComponents.closeModal));

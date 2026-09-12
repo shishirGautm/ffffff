@@ -1,21 +1,27 @@
 window.FNAdminDashboard = window.FNAdminDashboard || {};
 
 window.FNAdminDashboard.getStats = function() {
-  const courts = window.FNAdmin.state.courts;
-  const bookings = window.FNAdmin.state.bookings;
-  const users = window.FNAdmin.state.users;
-  const teams = window.FNAdmin.state.teams;
-  const totalRevenue = bookings.reduce((sum, booking) => sum + Number(booking.amount || 0), 0);
+  const courts = window.FNAdmin.state.courts || [];
+  const bookings = window.FNAdmin.state.bookings || [];
+  const users = window.FNAdmin.state.users || [];
+  const matches = window.FNAdmin.state.matches || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const todaysBookings = bookings.filter((booking) => booking.date === today);
+  const activeMatches = matches.filter((match) => ['active', 'live', 'ongoing'].includes(String(match.status || '').toLowerCase()));
+  const pendingBookings = bookings.filter((booking) => String(booking.bookingStatus || booking.status || '').toLowerCase() === 'pending');
+  const totalRevenue = bookings
+    .filter((booking) => !['cancelled', 'canceled'].includes(String(booking.bookingStatus || booking.status || '').toLowerCase()))
+    .reduce((sum, booking) => sum + Number(booking.amount || 0), 0);
 
   return [
-    { label: 'Total Users', value: users.length, change: '+12.4%', comparison: 'vs last month', icon: 'fa-solid fa-users', trend: 'up' },
-    { label: 'Total Courts', value: courts.length, change: '+5.1%', comparison: 'vs last month', icon: 'fa-solid fa-futbol', trend: 'up' },
-    { label: 'Total Bookings', value: bookings.length + 12458, change: '+18.4%', comparison: 'vs last month', icon: 'fa-regular fa-calendar-check', trend: 'up' },
-    { label: "Today's Bookings", value: 48, change: '+9.2%', comparison: 'vs yesterday', icon: 'fa-regular fa-clock', trend: 'up' },
-    { label: 'Total Revenue', value: 'NPR ' + (totalRevenue * 10).toLocaleString(), change: '+22.6%', comparison: 'vs last month', icon: 'fa-solid fa-wallet', trend: 'up' },
-    { label: 'Active Matches', value: 16, change: '+4.8%', comparison: 'this week', icon: 'fa-solid fa-trophy', trend: 'up' },
-    { label: 'Pending Bookings', value: 12, change: '-3.1%', comparison: 'vs yesterday', icon: 'fa-solid fa-hourglass-half', trend: 'down' },
-    { label: 'Registered Teams', value: teams.length + 38, change: '+11.2%', comparison: 'vs last month', icon: 'fa-solid fa-people-group', trend: 'up' }
+    { label: 'Total Users', value: users.length.toLocaleString(), change: 'Live', comparison: 'from Firebase', icon: 'fa-solid fa-users', trend: 'up' },
+    { label: 'Total Courts', value: courts.length.toLocaleString(), change: 'Live', comparison: 'from Firebase', icon: 'fa-solid fa-futbol', trend: 'up' },
+    { label: 'Total Bookings', value: bookings.length.toLocaleString(), change: 'Live', comparison: 'from Firebase', icon: 'fa-regular fa-calendar-check', trend: 'up' },
+    { label: "Today's Bookings", value: todaysBookings.length.toLocaleString(), change: today, comparison: 'booking date', icon: 'fa-regular fa-clock', trend: 'up' },
+    { label: 'Total Revenue', value: 'NPR ' + totalRevenue.toLocaleString(), change: 'Live', comparison: 'non-cancelled bookings', icon: 'fa-solid fa-wallet', trend: 'up' },
+    { label: 'Active Matches', value: activeMatches.length.toLocaleString(), change: 'Live', comparison: 'active or live status', icon: 'fa-solid fa-trophy', trend: 'up' },
+    { label: 'Pending Bookings', value: pendingBookings.length.toLocaleString(), change: 'Live', comparison: 'pending status', icon: 'fa-solid fa-hourglass-half', trend: 'down' },
+    { label: 'Registered Teams', value: (window.FNAdmin.state.teams || []).length.toLocaleString(), change: 'Live', comparison: 'from Firebase', icon: 'fa-solid fa-people-group', trend: 'up' }
   ];
 };
 
@@ -51,14 +57,24 @@ window.FNAdminDashboard.setupCharts = function() {
     Object.values(window.FNAdmin.dashboardCharts).forEach((chart) => chart.destroy());
   }
 
-  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const bookings = window.FNAdmin.state.bookings || [];
+  const users = window.FNAdmin.state.users || [];
+  const labels = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (6 - index));
+    return date.toISOString().slice(0, 10);
+  });
+  const shortLabels = labels.map((date) => new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' }));
+  const bookingData = labels.map((date) => bookings.filter((booking) => booking.date === date).length);
+  const revenueData = labels.map((date) => bookings.filter((booking) => booking.date === date && !['cancelled', 'canceled'].includes(String(booking.bookingStatus || '').toLowerCase())).reduce((sum, booking) => sum + Number(booking.amount || 0), 0));
   const bookingChart = new Chart(bookingCtx, {
     type: 'line',
     data: {
-      labels,
+      labels: shortLabels,
       datasets: [{
         label: 'Bookings',
-        data: [22, 28, 26, 33, 38, 44, 49],
+        data: bookingData,
         borderColor: '#00B95A',
         backgroundColor: 'rgba(0, 185, 90, 0.12)',
         fill: true,
@@ -72,10 +88,10 @@ window.FNAdminDashboard.setupCharts = function() {
   const revenueChart = new Chart(revenueCtx, {
     type: 'bar',
     data: {
-      labels,
+      labels: shortLabels,
       datasets: [{
         label: 'Revenue',
-        data: [45, 51, 49, 62, 70, 76, 83],
+        data: revenueData,
         backgroundColor: ['#00B95A', '#00C853', '#34d399', '#00B95A', '#00C853', '#0ea5e9', '#34d399'],
         borderRadius: 10
       }]
@@ -86,9 +102,9 @@ window.FNAdminDashboard.setupCharts = function() {
   const userGrowthChart = new Chart(userGrowthCtx, {
     type: 'doughnut',
     data: {
-      labels: ['New users', 'Active users', 'Returning users'],
+      labels: ['Active users', 'Disabled users', 'Other users'],
       datasets: [{
-        data: [34, 52, 14],
+        data: [users.filter((user) => String(user.status).toLowerCase() === 'active').length, users.filter((user) => String(user.status).toLowerCase() === 'disabled').length, users.filter((user) => !['active', 'disabled'].includes(String(user.status).toLowerCase())).length],
         backgroundColor: ['#00B95A', '#004D35', '#00C853']
       }]
     },
@@ -100,7 +116,7 @@ window.FNAdminDashboard.setupCharts = function() {
     data: {
       labels: ['Confirmed', 'Pending', 'Cancelled', 'Completed'],
       datasets: [{
-        data: [46, 20, 12, 22],
+        data: ['Confirmed', 'Pending', 'Cancelled', 'Completed'].map((status) => bookings.filter((booking) => String(booking.bookingStatus || '').toLowerCase() === status.toLowerCase()).length),
         backgroundColor: ['#00B95A', '#FF9800', '#E53935', '#2196F3']
       }]
     },
@@ -109,12 +125,14 @@ window.FNAdminDashboard.setupCharts = function() {
 
   const popularCourtsList = document.getElementById('popularCourtsList');
   if (popularCourtsList) {
-    const items = [
-      { name: 'Anveshan Futsal', bookings: 148, revenue: 'NPR 480K' },
-      { name: 'PlayArena', bookings: 126, revenue: 'NPR 440K' },
-      { name: 'GoalZone Futsal', bookings: 109, revenue: 'NPR 390K' },
-      { name: 'The Futsal Hub', bookings: 96, revenue: 'NPR 310K' }
-    ];
+    const courtTotals = bookings.reduce((totals, booking) => {
+      const name = booking.court || 'Unknown court';
+      if (!totals[name]) totals[name] = { name, bookings: 0, revenue: 0 };
+      totals[name].bookings += 1;
+      totals[name].revenue += Number(booking.amount || 0);
+      return totals;
+    }, {});
+    const items = Object.values(courtTotals).sort((first, second) => second.bookings - first.bookings).slice(0, 5);
 
     popularCourtsList.innerHTML = items.map((court, index) => `
       <div class="rank-item">
@@ -123,7 +141,7 @@ window.FNAdminDashboard.setupCharts = function() {
           <strong>${court.name}</strong>
           <small>${court.bookings} bookings</small>
         </div>
-        <strong>${court.revenue}</strong>
+          <strong>NPR ${court.revenue.toLocaleString()}</strong>
       </div>
     `).join('');
   }

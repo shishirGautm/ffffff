@@ -5,7 +5,7 @@ window.FNAdminAdmins.getRows = function() {
     admin.name,
     admin.email,
     admin.role,
-    admin.permissions.join(', '),
+    Array.isArray(admin.permissions) ? admin.permissions.join(', ') : 'No permissions assigned',
     window.FNAdminComponents.getStatusBadge(admin.status),
     '<div class="action-group"><button class="icon-button" title="Edit"><i class="fa-solid fa-pen"></i></button><button class="icon-button danger" title="Disable"><i class="fa-solid fa-ban"></i></button></div>'
   ]);

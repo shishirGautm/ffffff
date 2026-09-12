@@ -19,7 +19,8 @@ window.FNAdminBookings.getRows = function(searchTerm, statusFilter) {
     '<div class="action-group"><button class="icon-button" data-booking-action="view" data-booking-id="' + booking.id + '" title="View"><i class="fa-solid fa-eye"></i></button>' +
     (booking.bookingStatus === 'Pending' ? '<button class="icon-button" data-booking-action="confirm" data-booking-id="' + booking.id + '" title="Confirm booking"><i class="fa-solid fa-check"></i></button>' : '') +
     (booking.bookingStatus !== 'Cancelled' && booking.paymentStatus !== 'Paid' ? '<button class="icon-button" data-booking-action="verify-payment" data-booking-id="' + booking.id + '" title="Verify payment"><i class="fa-solid fa-receipt"></i></button>' : '') +
-    (booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Completed' ? '<button class="icon-button danger" data-booking-action="cancel" data-booking-id="' + booking.id + '" title="Cancel booking"><i class="fa-solid fa-xmark"></i></button>' : '') + '</div>'
+    (booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Completed' ? '<button class="icon-button danger" data-booking-action="cancel" data-booking-id="' + booking.id + '" title="Cancel booking"><i class="fa-solid fa-xmark"></i></button>' : '') +
+    '<button class="icon-button danger" data-booking-action="delete" data-booking-id="' + booking.id + '" title="Delete booking"><i class="fa-solid fa-trash"></i></button></div>'
   ]);
 };
 
@@ -38,6 +39,24 @@ window.FNAdminBookings.render = function() {
 window.FNAdminBookings.handleAction = function(action, bookingId) {
   const booking = window.FNAdmin.state.bookings.find((item) => item.id === bookingId);
   if (!booking) return;
+
+  if (action === 'delete') {
+    if (!window.confirm('Delete booking "' + booking.id + '" permanently?')) return;
+    const index = window.FNAdmin.state.bookings.findIndex((item) => item.id === booking.id);
+    const payment = (window.FNAdmin.state.payments || []).find((item) => item.bookingId === booking.id);
+    const removeBooking = window.FNAdminData.isLive() ? window.FNAdminData.remove('bookings', booking.id) : Promise.resolve();
+    const removePayment = payment && window.FNAdminData.isLive() ? window.FNAdminData.remove('payments', payment.id || 'TX-' + booking.id) : Promise.resolve();
+    Promise.all([removeBooking, removePayment]).then(() => {
+      if (index >= 0) window.FNAdmin.state.bookings.splice(index, 1);
+      if (payment) window.FNAdmin.state.payments = window.FNAdmin.state.payments.filter((item) => item.id !== payment.id);
+      this.render();
+      window.FNAdminComponents.showToast('Booking deleted successfully.', 'success');
+    }).catch((error) => {
+      console.error('Unable to delete booking:', error);
+      window.FNAdminComponents.showToast('Booking could not be deleted: ' + (error.message || 'permission denied.'), 'error');
+    });
+    return;
+  }
 
   if (action === 'view') {
     window.FNAdminComponents.openModal('<div class="panel__header"><div><p class="eyebrow">Booking details</p><h3>' + booking.id + '</h3></div><button class="icon-button" data-close-modal="true"><i class="fa-solid fa-xmark"></i></button></div><div class="detail-list"><div><span>User</span><strong>' + booking.user + '</strong></div><div><span>Court</span><strong>' + booking.court + '</strong></div><div><span>Schedule</span><strong>' + booking.date + ' • ' + booking.startTime + ' - ' + booking.endTime + '</strong></div><div><span>Payment</span><strong>' + booking.paymentMethod + ' • ' + booking.paymentStatus + '</strong></div></div>');

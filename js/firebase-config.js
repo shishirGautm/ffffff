@@ -93,6 +93,8 @@ window.FNAdmin.createBooking = function(booking) {
   if (this.demoMode) {
     this.state.bookings.push(booking);
     this.state.payments.push({ id: 'TX-' + booking.id, bookingId: booking.id, user: booking.user, userId: booking.userId, courtId: booking.courtId, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' });
+    this.state.notifications = this.state.notifications || [];
+    this.state.notifications.push({ id: 'booking-' + booking.id, title: 'Booking submitted', message: booking.court + ' is booked for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Users', targetUserId: booking.userId, userId: booking.userId, date: new Date().toISOString(), status: 'Sent', type: 'booking' });
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
     return Promise.resolve(booking);
   }
@@ -101,17 +103,19 @@ window.FNAdmin.createBooking = function(booking) {
   const database = firebase.firestore();
   const bookingRef = database.collection('bookings').doc(booking.id);
   const paymentRef = database.collection('payments').doc('TX-' + booking.id);
-  const conflictQuery = database.collection('bookings')
-    .where('courtId', '==', booking.courtId)
-    .where('date', '==', booking.date)
-    .where('startTime', '==', booking.startTime);
-  return database.runTransaction((transaction) => transaction.get(conflictQuery).then((snapshot) => {
-    const activeConflict = snapshot.docs.some((doc) => doc.data().bookingStatus !== 'Cancelled');
-    if (activeConflict) throw new Error('That court and time are already booked.');
-    transaction.set(bookingRef, booking);
-    transaction.set(paymentRef, { id: 'TX-' + booking.id, bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, user: booking.user, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' });
+  const notificationRef = database.collection('notifications').doc('booking-' + booking.id);
+  const payment = { id: 'TX-' + booking.id, bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, user: booking.user, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' };
+  const notification = { id: 'booking-' + booking.id, title: 'Booking submitted', message: booking.court + ' is booked for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Users', targetUserId: booking.userId, userId: booking.userId, date: new Date().toISOString(), status: 'Sent', type: 'booking' };
+  const batch = database.batch();
+  batch.set(bookingRef, booking);
+  batch.set(paymentRef, payment);
+  batch.set(notificationRef, notification);
+  return batch.commit().then(() => {
+    window.FNAdmin.state.bookings = [...(window.FNAdmin.state.bookings || []).filter((item) => item.id !== booking.id), booking];
+    window.FNAdmin.state.notifications = [...(window.FNAdmin.state.notifications || []).filter((item) => item.id !== notification.id), notification];
+    window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
     return booking;
-  }));
+  });
 };
 
 window.FNAdmin.syncCourt = function(court) {
@@ -126,9 +130,25 @@ window.FNAdmin.syncCourt = function(court) {
 
 window.FNAdmin.subscribeToBookings = function() {
   if (this.demoMode || !window.firebase || !firebase.firestore) return;
-  if (window.FNAdminAuth && window.FNAdminAuth.getRole() === 'Owner') return;
   this.listeners.forEach((unsubscribe) => unsubscribe());
   this.listeners = [];
+  const role = window.FNAdminAuth && window.FNAdminAuth.getRole();
+  if (role === 'Owner') {
+    const owner = window.FNAdminAuth.user;
+    const courts = (this.state.courts || []).filter((court) => court.ownerId === owner.uid || court.owner === owner.name);
+    courts.forEach((court) => {
+      const unsubscribe = firebase.firestore().collection('bookings').where('courtId', '==', court.id).onSnapshot((snapshot) => {
+        const otherBookings = (this.state.bookings || []).filter((booking) => booking.courtId !== court.id);
+        this.state.bookings = otherBookings.concat(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: { courtId: court.id } }));
+      }, (error) => {
+        console.error('Unable to subscribe to owner bookings:', error.message);
+        window.dispatchEvent(new CustomEvent('fn:bookings-error', { detail: error }));
+      });
+      this.listeners.push(unsubscribe);
+    });
+    return;
+  }
   let query = firebase.firestore().collection('bookings');
   if (window.FNAdminAuth && window.FNAdminAuth.getRole() === 'User' && window.FNAdminAuth.user) {
     query = query.where('userId', '==', window.FNAdminAuth.user.uid);
