@@ -144,11 +144,22 @@ window.FNUserPortal.init = function() {
   const timeSelect = document.getElementById('userBookingTime');
   if (!courtSelect || !form || !dateInput || !timeSelect) return;
 
+  const userMain = document.getElementById('userDashboardTop');
+  const userNotificationsPanel = document.getElementById('userNotificationsPanel');
+  const userHeader = userMain && userMain.querySelector('.user-header');
+  if (userMain && userNotificationsPanel && userHeader) userMain.insertBefore(userNotificationsPanel, userHeader.nextSibling);
+
   const findCourtButton = document.getElementById('findCourtBtn');
   const courtDirectory = document.getElementById('userCourtDirectory');
   if (findCourtButton && findCourtButton.dataset.fnInitialized !== 'true') {
     findCourtButton.addEventListener('click', () => courtDirectory && courtDirectory.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     findCourtButton.dataset.fnInitialized = 'true';
+  }
+  const viewBookingsButton = document.getElementById('viewBookingsBtn');
+  const bookingsPanel = document.getElementById('userBookingsPanel');
+  if (viewBookingsButton && viewBookingsButton.dataset.fnInitialized !== 'true') {
+    viewBookingsButton.addEventListener('click', () => bookingsPanel && bookingsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    viewBookingsButton.dataset.fnInitialized = 'true';
   }
   document.querySelectorAll('[data-user-scroll]').forEach((button) => {
     if (button.dataset.fnInitialized === 'true') return;

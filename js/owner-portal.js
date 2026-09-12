@@ -16,6 +16,9 @@ window.FNOwnerPortal.render = function() {
   const panel = document.getElementById('ownerCourtPanel');
   const bookingsList = document.getElementById('ownerBookingsList');
   if (!panel || !bookingsList) return;
+  const ownerSection = document.getElementById('ownerSection');
+  const ownerNotificationsPanel = ownerSection && ownerSection.querySelector('.user-notifications-panel');
+  if (ownerSection && ownerNotificationsPanel && panel) ownerSection.insertBefore(ownerNotificationsPanel, panel);
   this.renderNotifications();
 
   const courts = this.getCourts();

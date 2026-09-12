@@ -125,6 +125,35 @@ window.FNAdminAuth.loginWithGoogle = function() {
   });
 };
 
+window.FNAdminAuth.registerWithGoogle = function(role) {
+  if (role === 'Admin') {
+    window.FNAdminComponents.showToast('Admin accounts must be created by an existing administrator.', 'error');
+    return Promise.resolve(false);
+  }
+  if (window.FNAdmin.demoMode || !window.firebase || !firebase.auth || !firebase.apps || !firebase.apps.length) {
+    window.FNAdminComponents.showToast('Google registration requires Firebase Authentication.', 'error');
+    return Promise.resolve(false);
+  }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  return firebase.auth().signInWithPopup(provider).then((credential) => {
+    const firebaseUser = credential.user;
+    const name = firebaseUser.displayName || firebaseUser.email;
+    return window.FNAdminData.save('users', firebaseUser.uid, { id: firebaseUser.uid, name, email: firebaseUser.email, role, createdAt: new Date().toISOString() }).then(() => {
+      window.FNAdminAuth.setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name, role });
+      return window.FNAdminData.loadState(role).then(() => {
+        window.FNAdminData.subscribeState(role);
+        window.FNAdmin.subscribeToBookings();
+        window.FNAdminApp.renderAll();
+        window.FNAdminComponents.showToast('Account created with Google.', 'success');
+        return true;
+      });
+    });
+  }).catch((error) => {
+    window.FNAdminComponents.showToast(error.message || 'Google registration failed.', 'error');
+    return false;
+  });
+};
+
 window.FNAdminAuth.register = function(name, email, password, role) {
   if (role === 'Admin') {
     window.FNAdminComponents.showToast('Admin accounts must be created by an existing administrator.', 'error');
@@ -203,6 +232,8 @@ window.FNAdminAuth.init = function() {
 
   const googleLoginBtn = document.getElementById('googleLoginBtn');
   if (googleLoginBtn) googleLoginBtn.addEventListener('click', () => window.FNAdminAuth.loginWithGoogle());
+  const googleRegisterBtn = document.getElementById('googleRegisterBtn');
+  if (googleRegisterBtn) googleRegisterBtn.addEventListener('click', () => window.FNAdminAuth.registerWithGoogle(document.getElementById('registerRole').value));
 
   const loginForm = document.getElementById('authLoginForm');
   const registerForm = document.getElementById('registerForm');

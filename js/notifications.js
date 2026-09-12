@@ -17,6 +17,42 @@ window.FNAdminNotifications.render = function() {
   window.FNAdminComponents.renderTable({ headers, rows, targetId: 'notificationsTableContainer', emptyMessage: 'No notifications scheduled.' });
   const target = document.getElementById('notificationsTableContainer');
   if (target) target.querySelectorAll('[data-notification-action="delete"]').forEach((button) => button.addEventListener('click', () => this.delete(button.dataset.notificationId)));
+  this.renderBell();
+};
+
+window.FNAdminNotifications.renderBell = function() {
+  const badge = document.getElementById('adminNotificationBadge');
+  const count = document.getElementById('adminNotificationCount');
+  const preview = document.getElementById('adminNotificationPreview');
+  if (!badge || !count || !preview) return;
+  const notifications = (window.FNAdmin.state.notifications || []).slice().sort((first, second) => String(second.date || '').localeCompare(String(first.date || '')));
+  badge.textContent = notifications.length > 99 ? '99+' : String(notifications.length);
+  count.textContent = notifications.length + ' new';
+  preview.innerHTML = notifications.length ? notifications.slice(0, 5).map((item) => '<article class="notification-preview-item"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="notification-empty">No notifications yet.</p>';
+};
+
+window.FNAdminNotifications.initBell = function() {
+  const bell = document.getElementById('adminNotificationBell');
+  const dropdown = document.getElementById('adminNotificationDropdown');
+  const viewAll = document.getElementById('viewAllNotificationsBtn');
+  if (!bell || !dropdown || bell.dataset.fnInitialized === 'true') return;
+  bell.addEventListener('click', () => {
+    const isOpen = !dropdown.classList.contains('is-hidden');
+    dropdown.classList.toggle('is-hidden', isOpen);
+    bell.setAttribute('aria-expanded', String(!isOpen));
+  });
+  if (viewAll) viewAll.addEventListener('click', () => {
+    dropdown.classList.add('is-hidden');
+    const link = document.querySelector('.nav-link[data-view="notifications"]');
+    if (link) link.click();
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.notification-menu')) {
+      dropdown.classList.add('is-hidden');
+      bell.setAttribute('aria-expanded', 'false');
+    }
+  });
+  bell.dataset.fnInitialized = 'true';
 };
 
 window.FNAdminNotifications.delete = function(notificationId) {
@@ -51,5 +87,6 @@ window.FNAdminNotifications.openForm = function() {
 window.FNAdminNotifications.init = function() {
   const button = document.getElementById('addNotificationBtn');
   if (button) button.addEventListener('click', () => this.openForm());
+  this.initBell();
   this.render();
 };

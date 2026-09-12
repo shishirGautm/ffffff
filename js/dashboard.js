@@ -45,6 +45,13 @@ window.FNAdminDashboard.renderStats = function() {
   `).join('');
 };
 
+window.FNAdminDashboard.updateGreeting = function() {
+  const greeting = document.getElementById('adminGreeting');
+  const now = new Date();
+  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+  if (greeting) greeting.textContent = minutesSinceMidnight > 720 ? 'Good Morning' : 'Good Evening';
+};
+
 window.FNAdminDashboard.setupCharts = function() {
   const bookingCtx = document.getElementById('bookingChart');
   const revenueCtx = document.getElementById('revenueChart');
@@ -150,6 +157,7 @@ window.FNAdminDashboard.setupCharts = function() {
 };
 
 window.FNAdminDashboard.init = function() {
+  this.updateGreeting();
   this.renderStats();
   this.setupCharts();
 };

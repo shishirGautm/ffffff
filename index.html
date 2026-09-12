@@ -58,6 +58,8 @@
           <label>Password<input type="password" id="registerPassword" minlength="6" required /></label>
           <label>Account type<select id="registerRole"><option value="User">Player / User</option><option value="Owner">Court Owner</option></select></label>
           <button class="btn btn-primary full-width" type="submit">Create account</button>
+          <div class="auth-divider"><span>or</span></div>
+          <button class="btn btn-google full-width" id="googleRegisterBtn" type="button"><i class="fa-brands fa-google"></i> Continue with Google</button>
           <button class="auth-link" id="showLoginBtn" type="button">Back to login</button>
         </form>
 
@@ -76,8 +78,9 @@
             <button type="button" data-user-scroll="userBookingsPanel"><i class="fa-regular fa-calendar-check"></i><span>My bookings</span></button>
             <button type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-futbol"></i><span>Find a futsal</span></button>
             <button type="button" data-user-scroll="userTeamCount"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
+            <button type="button" data-user-scroll="userNotificationsPanel"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
           </nav>
-          <label class="user-nav-dropdown">Go to section<select id="userNavSelect"><option value="userDashboardTop">Dashboard</option><option value="userBookingsPanel">My bookings</option><option value="userCourtsPanel">Find a futsal</option><option value="userTeamCount">Teams</option></select></label>
+          <label class="user-nav-dropdown">Go to section<select id="userNavSelect"><option value="userDashboardTop">Dashboard</option><option value="userBookingsPanel">My bookings</option><option value="userCourtsPanel">Find a futsal</option><option value="userTeamCount">Teams</option><option value="userNotificationsPanel">Notifications</option></select></label>
           <div class="user-sidebar-note"><i class="fa-solid fa-circle-check"></i><span>Book your next match in a few clicks.</span></div>
         </aside>
 
@@ -98,20 +101,24 @@
           <p>Choose a nearby futsal court and reserve an available hour.</p>
         </div>
         <button class="btn btn-primary" type="button" id="findCourtBtn"><i class="fa-solid fa-location-dot"></i> Find a futsal</button>
+        <button class="btn btn-secondary" type="button" id="viewBookingsBtn"><i class="fa-regular fa-calendar-check"></i> My bookings</button>
           </section>
 
           <div class="user-grid">
         <div class="user-card">
+          <i class="fa-regular fa-calendar-check user-card-icon"></i>
           <span class="mini-tag">My bookings</span>
           <h3 id="userBookingCount">0 upcoming bookings</h3>
           <p id="userNextBooking">Book a court to see your next match here.</p>
         </div>
         <div class="user-card">
+          <i class="fa-solid fa-futbol user-card-icon"></i>
           <span class="mini-tag">Available futsals</span>
           <h3 id="userVenueCount">0 venues</h3>
           <p>Courts ready for booking</p>
         </div>
         <div class="user-card">
+          <i class="fa-solid fa-people-group user-card-icon"></i>
           <span class="mini-tag">Teams</span>
           <h3 id="userTeamCount">0 teams</h3>
           <p>Community leagues</p>
@@ -244,10 +251,17 @@
               <i class="fa-solid fa-magnifying-glass"></i>
               <input type="search" id="globalSearch" placeholder="Search" />
             </div>
-            <button class="icon-btn" aria-label="Notifications">
-              <i class="fa-solid fa-bell"></i>
-              <span class="badge">4</span>
-            </button>
+            <div class="notification-menu">
+              <button class="icon-btn" id="adminNotificationBell" aria-label="Notifications" aria-expanded="false">
+                <i class="fa-solid fa-bell"></i>
+                <span class="badge" id="adminNotificationBadge">0</span>
+              </button>
+              <div class="notification-dropdown is-hidden" id="adminNotificationDropdown">
+                <div class="notification-dropdown__header"><strong>Notifications</strong><span id="adminNotificationCount">0 new</span></div>
+                <div id="adminNotificationPreview" class="notification-dropdown__list"></div>
+                <button type="button" class="notification-dropdown__footer" id="viewAllNotificationsBtn">View all notifications</button>
+              </div>
+            </div>
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
               <i class="fa-solid fa-moon"></i>
             </button>
@@ -266,7 +280,7 @@
           <section id="dashboard-section" class="page-section active" data-page="dashboard">
             <div class="hero-card">
               <div>
-                <p class="eyebrow text-green">Good Morning, Admin 👋</p>
+                <p class="eyebrow text-green"><span id="adminGreeting">Good Morning</span>, Admin 👋</p>
                 <h2>Here's what's happening with Futsal Nepal today.</h2>
               </div>
             </div>
@@ -522,10 +536,10 @@
     <script src="js/firebase-config.js?v=20260912-6"></script>
     <script src="js/firebase-data.js?v=20260912-2"></script>
     <script src="js/components.js"></script>
-    <script src="js/auth.js?v=20260912-2"></script>
-    <script src="js/user-portal.js?v=20260912-4"></script>
-    <script src="js/owner-portal.js?v=20260912-3"></script>
-    <script src="js/dashboard.js?v=20260912-3"></script>
+    <script src="js/auth.js?v=20260912-3"></script>
+    <script src="js/user-portal.js?v=20260912-5"></script>
+    <script src="js/owner-portal.js?v=20260912-4"></script>
+    <script src="js/dashboard.js?v=20260912-4"></script>
     <script src="js/courts.js?v=20260912-2"></script>
     <script src="js/bookings.js?v=20260912-2"></script>
     <script src="js/users.js?v=20260912-3"></script>
@@ -534,7 +548,7 @@
     <script src="js/tournaments.js"></script>
     <script src="js/payments.js"></script>
     <script src="js/reviews.js"></script>
-    <script src="js/notifications.js?v=20260912-2"></script>
+    <script src="js/notifications.js?v=20260912-4"></script>
     <script src="js/reports.js"></script>
     <script src="js/admins.js?v=20260912-2"></script>
     <script src="js/settings.js"></script>
