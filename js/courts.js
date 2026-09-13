@@ -136,8 +136,12 @@ window.FNAdminCourts.openForm = function(court = null) {
         return window.FNAdmin.syncCourt(newCourt);
       };
 
+      const withTimeout = (promise, message) => new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error(message)), 15000);
+        promise.then(resolve, reject).finally(() => clearTimeout(timeout));
+      });
       const upload = photo && photo.size
-        ? window.FNAdminData.uploadAsset(photo, 'courts/' + newCourt.id + '/' + photo.name)
+        ? withTimeout(window.FNAdminData.uploadAsset(photo, 'courts/' + newCourt.id + '/' + photo.name), 'Firebase Storage is not ready. Open the Firebase Console for the footshal project, select Storage, and click Get started.')
         : Promise.resolve('');
       upload.then(saveCourt).then(() => {
         window.FNAdminComponents.closeModal();

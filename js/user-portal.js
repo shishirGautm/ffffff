@@ -14,12 +14,41 @@ window.FNUserPortal.renderNotifications = function() {
   list.innerHTML = notifications.length ? notifications.map((item) => '<article class="user-notification"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="muted">No new notifications.</p>';
 };
 
+window.FNUserPortal.renderProfile = function() {
+  const identity = document.getElementById('userProfileIdentity');
+  const details = document.getElementById('userProfileDetails');
+  const user = window.FNAdminAuth.user || {};
+  if (!identity || !details) return;
+  const profile = (window.FNAdmin.state.users || []).find((item) => item.id === user.uid || item.email === user.email) || user;
+  const fallbackName = user.email ? user.email.split('@')[0].replace(/[._-]+/g, ' ') : 'player';
+  const name = profile.name && profile.name !== profile.email ? profile.name : (user.name && user.name !== user.email ? user.name : fallbackName);
+  const initials = name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase();
+  const upcomingBookings = this.getUserBookings().filter((booking) => booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Rejected').length;
+  const imageUrl = profile.photoURL || profile.photoUrl || (typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? profile.avatar : '');
+  const identityImage = imageUrl ? '<img class="user-profile-image" src="' + imageUrl + '" alt="' + name + ' profile" />' : '<div class="owner-profile-avatar">' + initials + '</div>';
+  identity.innerHTML = identityImage + '<div><strong>' + name + '</strong><span>Player account</span></div>';
+  details.innerHTML = '<div><span>Name</span><strong>' + name + '</strong></div><div><span>Age</span><strong>' + (profile.age || 'Not added') + '</strong></div><div><span>Contact</span><strong>' + (profile.phone || profile.contactNumber || 'Not added') + '</strong></div><div><span>Email address</span><strong>' + (profile.email || user.email || 'Not available') + '</strong></div><div><span>Account type</span><strong>' + (user.role || profile.role || 'User') + '</strong></div><div><span>Upcoming bookings</span><strong>' + upcomingBookings + '</strong></div>';
+  const profileForm = document.getElementById('userProfileForm');
+  if (profileForm && profileForm.dataset.profilePopulated !== 'true') {
+    profileForm.elements.name.value = name;
+    profileForm.elements.age.value = profile.age || '';
+    profileForm.elements.phone.value = profile.phone || profile.contactNumber || '';
+    profileForm.elements.location.value = profile.location || '';
+    profileForm.elements.photoURL.value = imageUrl;
+    profileForm.dataset.profilePopulated = 'true';
+  }
+};
+
 window.FNUserPortal.updateDashboard = function() {
   const userName = document.getElementById('userDisplayName');
   const venueCount = document.getElementById('userVenueCount');
   const teamCount = document.getElementById('userTeamCount');
   const user = window.FNAdminAuth.user;
-  if (userName && user) userName.textContent = user.name || 'player';
+  this.renderProfile();
+  if (userName && user) {
+    const fallbackName = user.email ? user.email.split('@')[0].replace(/[._-]+/g, ' ') : 'player';
+    userName.textContent = user.name && user.name !== user.email ? user.name : fallbackName;
+  }
   if (venueCount) venueCount.textContent = window.FNAdmin.state.courts.filter((court) => court.status === 'active').length + ' venues';
   if (teamCount) teamCount.textContent = (window.FNAdmin.state.teams || []).length + ' teams';
 };
@@ -110,24 +139,32 @@ window.FNUserPortal.renderBookings = function() {
   }));
 };
 
-window.FNUserPortal.renderCourtDirectory = function() {
+window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
   const directory = document.getElementById('userCourtDirectory');
   const count = document.getElementById('userCourtDirectoryCount');
   if (!directory || !count) return;
 
-  const courts = window.FNAdmin.state.courts;
+  const query = String(searchTerm || '').trim().toLowerCase();
+  const courts = window.FNAdmin.state.courts.filter((court) => !query || [court.name, court.address, court.city, court.district, court.province].filter(Boolean).join(' ').toLowerCase().includes(query));
   count.textContent = courts.length + ' venues';
-  directory.innerHTML = courts.map((court) => {
-    const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(court.address + ', ' + court.city + ', Nepal');
+  directory.innerHTML = courts.length ? courts.map((court) => {
+    const location = [court.address, court.city, court.district, court.province, 'Nepal'].filter(Boolean).join(', ');
+    const mapLocation = [court.name, location].filter(Boolean).join(', ');
+    const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapLocation);
+    const mapEmbedUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(mapLocation) + '&output=embed';
     const imageUrl = (court.images && court.images[0]) || 'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=640&q=80';
     const bookingAction = court.status === 'active' ? '<button class="btn btn-primary user-court-book" data-court-id="' + court.id + '" type="button">Book now</button>' : '<span class="court-status inactive">Currently unavailable</span>';
-    return '<article class="user-court-card"><img class="court-card-image" src="' + imageUrl + '" alt="' + court.name + '" /><h4>' + court.name + '</h4><p>' + court.address + ', ' + court.city + '</p><div class="court-meta"><span class="court-price">NPR ' + Number(court.pricePerHour).toLocaleString() + '/hr</span><span>' + (court.openingTime || '08:00') + ' - ' + (court.closingTime || '22:00') + '</span></div><div class="court-actions">' + bookingAction + '<a class="court-map-link" href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-location-dot"></i> Map</a></div></article>';
-  }).join('');
+    const amenities = [['parking', 'Parking'], ['washroom', 'Washroom'], ['changingRoom', 'Changing room'], ['shower', 'Shower'], ['lighting', 'Lights']].filter(([key]) => court[key]).map(([, label]) => '<span>' + label + '</span>').join('');
+    const contact = court.contactNumber ? '<a href="tel:' + court.contactNumber + '"><i class="fa-solid fa-phone"></i> ' + court.contactNumber + '</a>' : '<span>Contact not available</span>';
+    return '<article class="user-court-card"><img class="court-card-image" src="' + imageUrl + '" alt="' + court.name + '" /><h4>' + court.name + '</h4><p class="user-court-address"><i class="fa-solid fa-location-dot"></i> ' + location + '</p><div class="court-meta"><span class="court-price">NPR ' + Number(court.pricePerHour || 0).toLocaleString() + '/hr</span><span>' + (court.openingTime || '08:00') + ' - ' + (court.closingTime || '22:00') + '</span></div><div class="user-court-specs"><span><strong>Type</strong>' + (court.type || 'Indoor') + '</span><span><strong>Turf</strong>' + (court.turfType || 'Artificial') + '</span></div><div class="user-court-map"><div class="user-court-map-heading"><strong>' + court.name + '</strong><span>Live location</span></div><iframe src="' + mapEmbedUrl + '" title="Live map for ' + court.name + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div><div class="user-court-contact">' + contact + '</div>' + (amenities ? '<div class="user-court-amenities">' + amenities + '</div>' : '') + (court.description ? '<p class="user-court-description">' + court.description + '</p>' : '') + '<div class="court-actions">' + bookingAction + '<a class="court-map-link" href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + court.name + ' map</a></div></article>';
+  }).join('') : '<div class="empty-state user-venue-empty"><i class="fa-solid fa-magnifying-glass"></i><h3>No venues found</h3><p>Try a different futsal name or location.</p></div>';
 
   directory.querySelectorAll('.user-court-book').forEach((button) => {
     button.addEventListener('click', () => {
       const courtSelect = document.getElementById('userBookingCourt');
       const bookingForm = document.getElementById('userBookingForm');
+      const bookingPanel = document.getElementById('userBookingPanel');
+      if (bookingPanel) bookingPanel.classList.remove('hidden');
       courtSelect.value = button.getAttribute('data-court-id');
       this.updateTimeSlots();
       this.updateAmount();
@@ -140,14 +177,75 @@ window.FNUserPortal.init = function() {
   const courtSelect = document.getElementById('userBookingCourt');
   const form = document.getElementById('userBookingForm');
   const courtSearch = document.getElementById('userCourtSearch');
+  const venueSearch = document.getElementById('userVenueSearch');
   const dateInput = document.getElementById('userBookingDate');
   const timeSelect = document.getElementById('userBookingTime');
   if (!courtSelect || !form || !dateInput || !timeSelect) return;
 
   const userMain = document.getElementById('userDashboardTop');
+  const userSidebar = document.querySelector('.user-sidebar');
+  const userMobileMenu = document.getElementById('userMobileMenuBtn');
+  if (userMobileMenu && userSidebar && userMobileMenu.dataset.fnInitialized !== 'true') {
+    userMobileMenu.addEventListener('click', () => {
+      const isOpen = userSidebar.classList.toggle('open');
+      userMobileMenu.setAttribute('aria-expanded', String(isOpen));
+      userMobileMenu.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
+      userMobileMenu.innerHTML = '<i class="fa-solid fa-' + (isOpen ? 'xmark' : 'bars') + '"></i>';
+    });
+    userMobileMenu.dataset.fnInitialized = 'true';
+  }
   const userNotificationsPanel = document.getElementById('userNotificationsPanel');
   const userHeader = userMain && userMain.querySelector('.user-header');
   if (userMain && userNotificationsPanel && userHeader) userMain.insertBefore(userNotificationsPanel, userHeader.nextSibling);
+
+  if (venueSearch && venueSearch.dataset.fnInitialized !== 'true') {
+    venueSearch.addEventListener('input', () => this.renderCourtDirectory(venueSearch.value));
+    venueSearch.dataset.fnInitialized = 'true';
+  }
+
+  const profileForm = document.getElementById('userProfileForm');
+  const profileEditButton = document.getElementById('userProfileEditBtn');
+  if (profileEditButton && profileForm && profileEditButton.dataset.fnInitialized !== 'true') {
+    profileEditButton.addEventListener('click', () => {
+      const isEditing = profileForm.classList.toggle('hidden');
+      profileEditButton.setAttribute('aria-label', isEditing ? 'Edit profile' : 'Close profile editor');
+      profileEditButton.setAttribute('title', isEditing ? 'Edit profile' : 'Close profile editor');
+      profileEditButton.innerHTML = '<i class="fa-solid fa-' + (isEditing ? 'pen' : 'xmark') + '"></i>';
+    });
+    profileEditButton.dataset.fnInitialized = 'true';
+  }
+  if (profileForm && profileForm.dataset.fnInitialized !== 'true') {
+    profileForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const user = window.FNAdminAuth.user;
+      if (!user || !user.uid) {
+        window.FNAdminComponents.showToast('Please sign in again to update your profile.', 'error');
+        return;
+      }
+      const data = new FormData(profileForm);
+      const profile = { id: user.uid, name: data.get('name').trim(), email: user.email || '', role: user.role || 'User', age: data.get('age') ? Number(data.get('age')) : '', phone: data.get('phone').trim(), location: data.get('location').trim(), photoURL: data.get('photoURL').trim(), updatedAt: new Date().toISOString() };
+      const save = window.FNAdminData.isLive()
+        ? window.FNAdminData.save('users', user.uid, profile)
+        : Promise.resolve((window.FNAdmin.state.users = [...(window.FNAdmin.state.users || []).filter((item) => item.id !== user.uid), profile]));
+      save.then(() => {
+        window.FNAdminAuth.user.name = profile.name;
+        window.FNAdmin.state.users = [...(window.FNAdmin.state.users || []).filter((item) => item.id !== user.uid), profile];
+        profileForm.dataset.profilePopulated = 'true';
+        profileForm.classList.add('hidden');
+        if (profileEditButton) {
+          profileEditButton.setAttribute('aria-label', 'Edit profile');
+          profileEditButton.setAttribute('title', 'Edit profile');
+          profileEditButton.innerHTML = '<i class="fa-solid fa-pen"></i>';
+        }
+        this.updateDashboard();
+        window.FNAdminComponents.showToast('Profile updated successfully.', 'success');
+      }).catch((error) => {
+        console.error('Unable to update profile:', error);
+        window.FNAdminComponents.showToast('Profile could not be updated: ' + (error.message || 'permission denied.'), 'error');
+      });
+    });
+    profileForm.dataset.fnInitialized = 'true';
+  }
 
   const findCourtButton = document.getElementById('findCourtBtn');
   const courtDirectory = document.getElementById('userCourtDirectory');
@@ -168,6 +266,12 @@ window.FNUserPortal.init = function() {
       if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       document.querySelectorAll('[data-user-scroll]').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
+      if (userSidebar) userSidebar.classList.remove('open');
+      if (userMobileMenu) {
+        userMobileMenu.setAttribute('aria-expanded', 'false');
+        userMobileMenu.setAttribute('aria-label', 'Open navigation');
+        userMobileMenu.innerHTML = '<i class="fa-solid fa-bars"></i>';
+      }
     });
     button.dataset.fnInitialized = 'true';
   });
@@ -281,7 +385,9 @@ window.FNUserPortal.init = function() {
       this.updateAmount();
     }).catch((error) => {
       console.error('Unable to create booking:', error);
-      const message = error && error.code === 'permission-denied'
+      const message = error && error.code === 'already-booked'
+        ? 'Already booked. Please choose another time.'
+        : error && error.code === 'permission-denied'
         ? 'Permission denied. Deploy firebase/firestore.rules and make sure the signed-in user is authenticated.'
         : error && error.code
           ? '(' + error.code + ') ' + (error.message || 'Booking could not be saved.')

@@ -23,27 +23,27 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read, create, update: if isAuthenticated() && (request.auth.uid == userId || isStaff());
-      allow delete: if isStaff();
+      allow delete: if isStaff() || ownsCourt(resource.data.courtId);
     }
 
     match /courts/{courtId} {
       allow read: if isAuthenticated();
       allow create, delete: if isStaff();
-      allow update: if isStaff() || (ownsCourt(courtId) && request.resource.data.ownerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'images', 'pricePerHour', 'status', 'openingTime', 'closingTime', 'ownerId']));
+      allow update: if isStaff() || (ownsCourt(courtId) && request.resource.data.ownerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'images', 'address', 'city', 'district', 'province', 'contactNumber', 'pricePerHour', 'type', 'turfType', 'status', 'openingTime', 'closingTime', 'description', 'ownerId']));
     }
 
     match /bookings/{bookingId} {
       allow read: if isAuthenticated() && (isStaff() || resource.data.userId == request.auth.uid || ownsCourt(resource.data.courtId));
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Pending') || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Cancelled' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus'])) || (ownsCourt(resource.data.courtId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus']));
-      allow delete: if isStaff();
+      allow delete: if isStaff() || ownsCourt(resource.data.courtId);
     }
 
     match /payments/{paymentId} {
       allow read: if isAuthenticated() && (isStaff() || resource.data.userId == request.auth.uid || ownsCourt(resource.data.courtId));
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'Pending';
       allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'Pending');
-      allow delete: if isStaff();
+      allow delete: if isStaff() || ownsCourt(resource.data.courtId);
     }
 
     match /admins/{adminId} {
@@ -60,7 +60,8 @@ service cloud.firestore {
     match /bookingSlots/{slotId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isStaff();
+      allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.bookingId == resource.data.bookingId && request.resource.data.status == 'Cancelled') || (ownsCourt(resource.data.courtId) && request.resource.data.bookingId == resource.data.bookingId && request.resource.data.status == 'Cancelled');
+      allow delete: if isStaff() || ownsCourt(resource.data.courtId);
     }
 
     match /{document=**} {

@@ -76,6 +76,24 @@ window.FNAdmin.state = {
 
 window.FNAdmin.listeners = window.FNAdmin.listeners || [];
 
+window.FNAdmin.getBookingSlotId = function(booking) {
+  return [booking.courtId || booking.court, booking.date, booking.startTime, booking.endTime].join('_').replace(/[^a-zA-Z0-9_-]/g, '-');
+};
+
+window.FNAdmin.hasBookingConflict = function(booking, excludeBookingId) {
+  const toMinutes = (time) => {
+    const parts = String(time || '').split(':').map(Number);
+    return (parts[0] * 60) + parts[1];
+  };
+  const bookingStart = toMinutes(booking.startTime);
+  const bookingEnd = toMinutes(booking.endTime);
+  return (this.state.bookings || []).some((item) => {
+    if (item.id === excludeBookingId || item.bookingStatus === 'Cancelled' || item.bookingStatus === 'Rejected') return false;
+    if (!((item.courtId && item.courtId === booking.courtId) || item.court === booking.court) || item.date !== booking.date) return false;
+    return bookingStart < toMinutes(item.endTime) && toMinutes(item.startTime) < bookingEnd;
+  });
+};
+
 window.FNAdmin.syncBookings = function(booking) {
   if (this.demoMode) {
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking || null }));
@@ -83,12 +101,50 @@ window.FNAdmin.syncBookings = function(booking) {
   }
 
   if (!window.firebase || !firebase.firestore) return Promise.reject(new Error('Firebase is not available.'));
-  return firebase.firestore().collection('bookings').doc(booking.id).set(booking, { merge: true });
+  const database = firebase.firestore();
+  const saveBooking = database.collection('bookings').doc(booking.id).set(booking, { merge: true });
+  if (booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Rejected') return saveBooking;
+  const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
+  return saveBooking.then(() => slotRef.get().then((slot) => {
+    if (slot.exists && slot.data().bookingId === booking.id) return slotRef.set({ status: 'Cancelled' }, { merge: true });
+    return null;
+  }));
+};
+
+window.FNAdmin.deleteBooking = function(booking) {
+  if (this.demoMode) {
+    this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
+    window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+    return Promise.resolve();
+  }
+  if (!window.firebase || !firebase.firestore) return Promise.reject(new Error('Firebase is not available.'));
+  const database = firebase.firestore();
+  const isOwner = window.FNAdminAuth && window.FNAdminAuth.getRole() === 'Owner';
+  const bookingRef = database.collection('bookings').doc(booking.id);
+  const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
+  if (isOwner) {
+    return slotRef.get().then((slot) => {
+      const batch = database.batch();
+      batch.delete(bookingRef);
+      if (slot.exists) batch.delete(slotRef);
+      return batch.commit();
+    }).then(() => {
+      this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
+      window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+    });
+  }
+  const batch = database.batch();
+  batch.delete(bookingRef);
+  batch.delete(database.collection('payments').doc('TX-' + booking.id));
+  batch.delete(slotRef);
+  return batch.commit().then(() => {
+    this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
+    window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+  });
 };
 
 window.FNAdmin.createBooking = function(booking) {
-  const hasConflict = this.state.bookings.some((item) => (item.courtId === booking.courtId || item.court === booking.court) && item.date === booking.date && item.startTime === booking.startTime && item.bookingStatus !== 'Cancelled');
-  if (hasConflict) return Promise.reject(new Error('That court and time are already booked.'));
+  if (this.hasBookingConflict(booking)) return Promise.reject(new Error('Already booked. Please choose another time.'));
 
   if (this.demoMode) {
     this.state.bookings.push(booking);
@@ -101,16 +157,23 @@ window.FNAdmin.createBooking = function(booking) {
 
   if (!window.firebase || !firebase.firestore) return Promise.reject(new Error('Firebase is not available.'));
   const database = firebase.firestore();
+  const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
   const bookingRef = database.collection('bookings').doc(booking.id);
   const paymentRef = database.collection('payments').doc('TX-' + booking.id);
   const notificationRef = database.collection('notifications').doc('booking-' + booking.id);
   const payment = { id: 'TX-' + booking.id, bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, user: booking.user, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' };
   const notification = { id: 'booking-' + booking.id, title: 'Booking submitted', message: booking.court + ' is booked for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Users', targetUserId: booking.userId, userId: booking.userId, date: new Date().toISOString(), status: 'Sent', type: 'booking' };
-  const batch = database.batch();
-  batch.set(bookingRef, booking);
-  batch.set(paymentRef, payment);
-  batch.set(notificationRef, notification);
-  return batch.commit().then(() => {
+  return database.runTransaction((transaction) => transaction.get(slotRef).then((slot) => {
+    if (slot.exists && slot.data().status !== 'Cancelled') {
+      const conflictError = new Error('Already booked. Please choose another time.');
+      conflictError.code = 'already-booked';
+      throw conflictError;
+    }
+    transaction.set(slotRef, { bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, date: booking.date, startTime: booking.startTime, endTime: booking.endTime, status: 'Active' });
+    transaction.set(bookingRef, booking);
+    transaction.set(paymentRef, payment);
+    transaction.set(notificationRef, notification);
+  })).then(() => {
     window.FNAdmin.state.bookings = [...(window.FNAdmin.state.bookings || []).filter((item) => item.id !== booking.id), booking];
     window.FNAdmin.state.notifications = [...(window.FNAdmin.state.notifications || []).filter((item) => item.id !== notification.id), notification];
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));

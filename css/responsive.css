@@ -31,9 +31,18 @@
   }
 
   .analytics-grid,
-  .settings-grid {
+  .settings-grid,
+  .user-grid {
     grid-template-columns: 1fr;
   }
+
+  .user-dashboard-banner { align-items: flex-start; flex-wrap: wrap; }
+
+  .user-dashboard-shell { display: block; }
+  .user-sidebar { display: none; }
+  .user-mobile-menu { display: none; }
+  .user-header { align-items: flex-start; }
+  .user-header > div { min-width: 0; }
 }
 
 @media (max-width: 640px) {
@@ -63,6 +72,26 @@
   .field-grid {
     grid-template-columns: 1fr;
   }
+
+  .user-profile-form { grid-template-columns: 1fr; }
+
+  .owner-profile-content,
+  .owner-profile-details {
+    grid-template-columns: 1fr;
+  }
+
+  .user-dashboard-main { padding: 18px 14px 28px; }
+  .user-top-nav { width: 100%; order: 3; }
+  .user-top-nav select { width: 100%; }
+  .user-top-nav-bar { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 12px; }
+  .user-top-nav-bar button { flex: 0 0 auto; }
+  .user-header h2 { font-size: 1.45rem; }
+  .user-dashboard-banner h3 { font-size: 1.15rem; }
+  .user-dashboard-banner { padding: 16px; border-radius: 16px; }
+  .user-dashboard-actions { width: 100%; }
+  .user-dashboard-actions .btn { flex: 1; }
+  .user-venue-tools { width: 100%; align-items: stretch; flex-direction: column; }
+  .user-venue-search { min-width: 0; width: 100%; }
 
   .modal__pane {
     width: min(94vw, 580px);

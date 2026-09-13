@@ -74,18 +74,25 @@
             <strong>FUTSAL NEPAL</strong>
           </div>
           <nav class="user-sidebar-nav" aria-label="User navigation">
-            <button type="button" class="active" data-user-scroll="userDashboardTop"><i class="fa-solid fa-house"></i><span>Dashboard</span></button>
+            <button type="button" data-user-scroll="userProfilePanel"><i class="fa-solid fa-user"></i><span>Profile</span></button>
             <button type="button" data-user-scroll="userBookingsPanel"><i class="fa-regular fa-calendar-check"></i><span>My bookings</span></button>
             <button type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-futbol"></i><span>Find a futsal</span></button>
             <button type="button" data-user-scroll="userTeamCount"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
             <button type="button" data-user-scroll="userNotificationsPanel"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
           </nav>
-          <label class="user-nav-dropdown">Go to section<select id="userNavSelect"><option value="userDashboardTop">Dashboard</option><option value="userBookingsPanel">My bookings</option><option value="userCourtsPanel">Find a futsal</option><option value="userTeamCount">Teams</option><option value="userNotificationsPanel">Notifications</option></select></label>
           <div class="user-sidebar-note"><i class="fa-solid fa-circle-check"></i><span>Book your next match in a few clicks.</span></div>
         </aside>
 
         <main class="user-dashboard-main" id="userDashboardTop">
+          <nav class="user-top-nav-bar" aria-label="User sections">
+            <button type="button" data-user-scroll="userProfilePanel"><i class="fa-solid fa-user"></i><span>Profile</span></button>
+            <button type="button" data-user-scroll="userBookingsPanel"><i class="fa-regular fa-calendar-check"></i><span>My bookings</span></button>
+            <button type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-futbol"></i><span>Find a futsal</span></button>
+            <button type="button" data-user-scroll="userTeamCount"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
+            <button type="button" data-user-scroll="userNotificationsPanel"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
+          </nav>
           <header class="user-header">
+        <button class="user-mobile-menu" id="userMobileMenuBtn" type="button" aria-label="Open navigation" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
         <div>
           <p class="eyebrow text-green">FUTSAL NEPAL</p>
           <h2>Welcome back, <span id="userDisplayName">player</span></h2>
@@ -94,14 +101,32 @@
         <button class="btn btn-secondary" id="userLogoutBtn">Logout</button>
           </header>
 
+          <section class="user-panel user-profile-panel" id="userProfilePanel">
+            <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Your profile</h3></div><button class="icon-button" id="userProfileEditBtn" type="button" aria-label="Edit profile" title="Edit profile"><i class="fa-solid fa-pen"></i></button></div>
+            <div class="owner-profile-content">
+              <div id="userProfileIdentity" class="owner-profile-identity"></div>
+              <div id="userProfileDetails" class="owner-profile-details"></div>
+            </div>
+            <form id="userProfileForm" class="user-profile-form hidden">
+              <label>Name<input name="name" type="text" required /></label>
+              <label>Age<input name="age" type="number" min="1" max="120" /></label>
+              <label>Contact number<input name="phone" type="tel" placeholder="+977-98XXXXXXXX" /></label>
+              <label>Location<input name="location" type="text" placeholder="Kathmandu" /></label>
+              <label class="user-profile-field-wide">Profile image URL<input name="photoURL" type="url" placeholder="https://..." /></label>
+              <button class="btn btn-primary" type="submit"><i class="fa-solid fa-user-pen"></i> Save profile</button>
+            </form>
+          </section>
+
           <section class="user-dashboard-banner">
         <div>
           <p class="eyebrow text-green">Your match dashboard</p>
           <h3>Ready for your next game?</h3>
           <p>Choose a nearby futsal court and reserve an available hour.</p>
         </div>
-        <button class="btn btn-primary" type="button" id="findCourtBtn"><i class="fa-solid fa-location-dot"></i> Find a futsal</button>
-        <button class="btn btn-secondary" type="button" id="viewBookingsBtn"><i class="fa-regular fa-calendar-check"></i> My bookings</button>
+        <div class="user-dashboard-actions">
+          <button class="btn btn-primary" type="button" id="findCourtBtn"><i class="fa-solid fa-location-dot"></i> Find a futsal</button>
+          <button class="btn btn-secondary" type="button" id="viewBookingsBtn"><i class="fa-regular fa-calendar-check"></i> My bookings</button>
+        </div>
           </section>
 
           <div class="user-grid">
@@ -126,7 +151,7 @@
           </div>
 
           <div class="user-booking-layout">
-            <section class="user-panel" id="userBookingPanel">
+            <section class="user-panel hidden" id="userBookingPanel">
           <div class="panel__header">
             <div>
               <p class="eyebrow text-green">Reserve a pitch</p>
@@ -163,7 +188,7 @@
             <p class="eyebrow text-green">Explore venues</p>
             <h3>Futsal courts in Nepal</h3>
           </div>
-          <span class="muted" id="userCourtDirectoryCount"></span>
+          <div class="user-venue-tools"><label class="user-venue-search"><i class="fa-solid fa-magnifying-glass"></i><input id="userVenueSearch" type="search" placeholder="Search futsal venues" autocomplete="off" /></label><span class="muted" id="userCourtDirectoryCount"></span></div>
         </div>
         <div id="userCourtDirectory" class="user-court-directory"></div>
           </section>
@@ -184,6 +209,13 @@
         </div>
         <button class="btn btn-secondary" id="ownerLogoutBtn">Logout</button>
       </header>
+      <section class="user-panel owner-profile-panel" id="ownerProfilePanel">
+        <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Court owner profile</h3></div></div>
+        <div class="owner-profile-content">
+          <div id="ownerProfileIdentity" class="owner-profile-identity"></div>
+          <div id="ownerProfileDetails" class="owner-profile-details"></div>
+        </div>
+      </section>
       <div id="ownerCourtPanel" class="owner-portal-grid"></div>
       <section class="user-panel">
         <div class="panel__header"><div><p class="eyebrow text-green">Reservations</p><h3>Bookings for your courts</h3></div></div>
@@ -533,15 +565,15 @@
 
     <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-    <script src="js/firebase-config.js?v=20260912-6"></script>
-    <script src="js/firebase-data.js?v=20260912-2"></script>
+    <script src="js/firebase-config.js?v=20260913-7"></script>
+    <script src="js/firebase-data.js?v=20260913-3"></script>
     <script src="js/components.js"></script>
     <script src="js/auth.js?v=20260912-3"></script>
-    <script src="js/user-portal.js?v=20260912-5"></script>
-    <script src="js/owner-portal.js?v=20260912-4"></script>
+    <script src="js/user-portal.js?v=20260913-13"></script>
+    <script src="js/owner-portal.js?v=20260913-9"></script>
     <script src="js/dashboard.js?v=20260912-4"></script>
-    <script src="js/courts.js?v=20260912-2"></script>
-    <script src="js/bookings.js?v=20260912-2"></script>
+    <script src="js/courts.js?v=20260913-4"></script>
+    <script src="js/bookings.js?v=20260913-3"></script>
     <script src="js/users.js?v=20260912-3"></script>
     <script src="js/teams.js"></script>
     <script src="js/matches.js"></script>

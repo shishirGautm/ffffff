@@ -65,6 +65,13 @@ window.FNAdminBookings.handleAction = function(action, bookingId) {
   }
 
   if (action === 'confirm') {
+    if (window.FNAdmin.hasBookingConflict(booking, booking.id)) {
+      booking.bookingStatus = 'Rejected';
+      window.FNAdminComponents.showToast('Booking rejected: already booked. Please choose another time.', 'error');
+      window.FNAdmin.syncBookings(booking);
+      this.render();
+      return;
+    }
     booking.bookingStatus = 'Confirmed';
     window.FNAdminComponents.showToast('Booking confirmed.', 'success');
   } else if (action === 'verify-payment') {

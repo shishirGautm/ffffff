@@ -194,13 +194,15 @@ img { max-width: 100%; display: block; }
 
 #ownerSection { padding: 32px 24px; }
 
-.user-dashboard-shell { display: grid; grid-template-columns: 238px minmax(0, 1fr); min-height: 100vh; }
-.user-sidebar { display: flex; flex-direction: column; padding: 26px 16px; border-right: 1px solid var(--border); background: var(--white); }
+.user-dashboard-shell { display: block; min-height: 100vh; }
+.user-sidebar { display: none; }
+.user-top-nav { display: grid; gap: 5px; color: var(--muted); font-size: 0.72rem; font-weight: 700; }
+.user-top-nav select { min-width: 150px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--white); color: var(--text); font: inherit; }
 .user-sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 28px; color: var(--text); letter-spacing: 0.04em; }
 .user-sidebar-brand .brand-mark { width: 34px; height: 34px; }
 .user-sidebar-brand .brand-mark img { width: 100%; height: 100%; object-fit: contain; }
 .user-sidebar-nav { display: grid; gap: 6px; }
-.user-sidebar-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 13px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); text-align: left; font-weight: 700; cursor: pointer; }
+.user-sidebar-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 13px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); text-align: left; font-size: 0.86rem; font-weight: 700; cursor: pointer; }
 .user-sidebar-nav button:hover, .user-sidebar-nav button.active { background: var(--green-soft); color: var(--green); }
 .user-sidebar-nav i { width: 18px; text-align: center; }
 .user-nav-dropdown { display: none; gap: 6px; margin-top: 12px; color: var(--muted); font-size: 0.75rem; font-weight: 700; }
@@ -208,6 +210,7 @@ img { max-width: 100%; display: block; }
 .user-sidebar-note { display: flex; gap: 9px; align-items: flex-start; margin: auto 10px 4px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.78rem; line-height: 1.45; }
 .user-sidebar-note i { color: var(--green); margin-top: 2px; }
 .user-dashboard-main { min-width: 0; padding: 24px 28px 32px; }
+.user-dashboard-main { font-size: 0.94rem; }
 
 .user-header {
   display: flex;
@@ -218,10 +221,16 @@ img { max-width: 100%; display: block; }
 
 .user-header h2 {
   margin: 0;
-  font-size: clamp(2rem, 3vw, 2.5rem);
+  font-size: 1.75rem;
+  line-height: 1.1;
 }
 
 .user-header .muted { margin: 6px 0 0; }
+.user-mobile-menu { display: none; }
+.user-top-nav-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--white); }
+.user-top-nav-bar button { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+.user-top-nav-bar button:hover, .user-top-nav-bar button.active { background: var(--green-soft); color: var(--green); }
+.user-top-nav-bar i { font-size: 0.82rem; }
 
 .user-dashboard-banner {
   display: flex;
@@ -235,18 +244,21 @@ img { max-width: 100%; display: block; }
   background: linear-gradient(110deg, #e8f8ef, #f8fcf9);
 }
 
-.user-dashboard-banner h3 { margin: 0 0 6px; font-size: 1.35rem; }
+.user-dashboard-banner > div:first-child { flex: 1; }
+.user-dashboard-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.user-dashboard-banner h3 { margin: 0 0 6px; font-size: 1.3rem; line-height: 1.2; }
 .user-dashboard-banner p:last-child { margin: 0; color: var(--muted); }
-.user-dashboard-banner .btn { margin-top: 12px; }
+.user-dashboard-actions .btn { margin-top: 0; }
 .user-card-icon { display: block; margin-bottom: 8px; color: var(--green); font-size: 1.05rem; }
 
 .user-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
 .user-card {
+  min-width: 0;
   background: var(--white);
   border: 1px solid #d5dfda;
   border-radius: 14px;
@@ -268,12 +280,14 @@ img { max-width: 100%; display: block; }
 
 .user-card h3 {
   margin: 0 0 6px;
-  font-size: 1.25rem;
+  font-size: 1.18rem;
+  line-height: 1.2;
 }
 
 .user-card p {
   margin: 0;
   color: var(--muted);
+  line-height: 1.45;
 }
 
 .user-booking-layout {
@@ -294,6 +308,26 @@ img { max-width: 100%; display: block; }
 
 .user-panel .panel__header { margin-bottom: 18px; }
 .user-panel h3 { margin: 0; }
+.user-panel h3 { font-size: 1.12rem; line-height: 1.25; }
+
+.owner-profile-panel { margin-bottom: 18px; }
+.user-profile-panel { margin-bottom: 18px; }
+.user-profile-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+.user-profile-form.hidden { display: none; }
+.user-profile-form label { display: grid; gap: 7px; color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+.user-profile-form input { width: 100%; padding: 10px 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
+.user-profile-field-wide, .user-profile-form button { grid-column: 1 / -1; }
+.owner-profile-content { display: grid; grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr); gap: 18px; align-items: center; }
+.owner-profile-identity { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.owner-profile-identity strong { display: block; font-size: 1.05rem; overflow-wrap: anywhere; }
+.owner-profile-identity span { display: block; margin-top: 4px; color: var(--muted); font-size: 0.82rem; }
+.owner-profile-avatar { display: grid; flex: 0 0 48px; width: 48px; height: 48px; place-items: center; border-radius: 50%; background: var(--green); color: #fff; font-weight: 800; }
+.user-profile-image { display: block; flex: 0 0 48px; width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+.owner-profile-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.owner-profile-details > div { min-width: 0; padding: 12px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+.owner-profile-details span, .owner-profile-details strong { display: block; }
+.owner-profile-details span { margin-bottom: 5px; color: var(--muted); font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.owner-profile-details strong { overflow-wrap: anywhere; font-size: 0.9rem; }
 
 .user-booking-form {
   display: grid;
@@ -352,6 +386,7 @@ img { max-width: 100%; display: block; }
 
 .map-link { color: var(--green); font-weight: 800; white-space: nowrap; }
 .map-link.hidden { display: none; }
+#userBookingPanel.hidden { display: none; }
 .court-availability { display: block; margin-top: 4px; color: var(--green); }
 .court-availability.unavailable { color: var(--danger); }
 
@@ -360,11 +395,22 @@ img { max-width: 100%; display: block; }
 .owner-portal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
 .owner-court-card { background: var(--white); border: 1px solid var(--border); border-radius: 22px; padding: 22px 20px; box-shadow: var(--shadow); }
 .court-card-image { width: 100%; height: 150px; object-fit: cover; border-radius: 14px; margin-bottom: 12px; }
+.court-image-button { position: relative; display: block; width: 100%; padding: 0; border: 0; background: transparent; color: #fff; cursor: zoom-in; text-align: left; }
+.court-image-button .court-card-image { display: block; margin-bottom: 12px; }
+.court-image-button span { position: absolute; right: 10px; bottom: 22px; padding: 6px 9px; border-radius: 7px; background: rgba(20, 35, 30, 0.82); font-size: 0.72rem; font-weight: 700; }
+.court-image-preview { display: grid; place-items: center; overflow: hidden; border-radius: 12px; background: var(--bg); }
+.court-image-preview img { display: block; width: 100%; max-height: 68vh; object-fit: contain; }
 .owner-court-card h3 { margin: 0 0 6px; }
 .owner-court-card p { margin: 0 0 18px; color: var(--muted); }
+.owner-court-map { margin: 0 0 18px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+.owner-court-map-heading { display: flex; justify-content: space-between; gap: 8px; padding: 9px 11px; background: var(--white); font-size: 0.78rem; }
+.owner-court-map-heading span { color: var(--muted); }
+.owner-court-map iframe { display: block; width: 100%; height: 150px; border: 0; }
+.owner-court-map a { display: block; padding: 9px 11px; color: var(--green); font-size: 0.78rem; font-weight: 800; }
 .owner-court-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .owner-court-form label { display: grid; gap: 7px; color: var(--muted); font-size: 0.82rem; font-weight: 700; }
-.owner-court-form input, .owner-court-form select { width: 100%; padding: 10px 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); }
+.owner-court-form input, .owner-court-form select, .owner-court-form textarea { width: 100%; padding: 10px 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
+.owner-field-wide { grid-column: 1 / -1; }
 .owner-court-form input[type="file"] { padding: 8px; font-size: 0.76rem; }
 .owner-court-form button { grid-column: 1 / -1; }
 .owner-bookings-list { display: grid; gap: 10px; }
@@ -375,6 +421,10 @@ img { max-width: 100%; display: block; }
 .owner-booking-actions button { padding: 7px 10px; border-radius: 8px; background: var(--green-soft); color: var(--green); font-weight: 700; }
 
 .user-courts-panel { margin-top: 18px; }
+.user-venue-tools { display: flex; align-items: center; gap: 10px; }
+.user-venue-search { display: flex; align-items: center; gap: 8px; min-width: min(260px, 42vw); padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--muted); }
+.user-venue-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 0.82rem; }
+.user-venue-empty { grid-column: 1 / -1; }
 
 .user-court-directory {
   display: grid;
@@ -395,8 +445,21 @@ img { max-width: 100%; display: block; }
 
 .user-court-card h4 { margin: 0; font-size: 1.05rem; }
 .user-court-card p { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.user-court-address { display: flex; gap: 6px; line-height: 1.45; }
 .user-court-card .court-meta { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .court-price { color: var(--green); font-weight: 800; white-space: nowrap; }
+.user-court-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.user-court-specs span { padding: 8px 9px; border-radius: 8px; background: var(--white); color: var(--text); font-size: 0.78rem; }
+.user-court-specs strong { display: block; margin-bottom: 2px; color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.user-court-contact { font-size: 0.78rem; }
+.user-court-contact a { color: var(--green); font-weight: 700; }
+.user-court-amenities { display: flex; flex-wrap: wrap; gap: 5px; }
+.user-court-amenities span { padding: 4px 7px; border: 1px solid #bfe8d6; border-radius: 999px; color: var(--green); font-size: 0.68rem; font-weight: 700; }
+.user-court-description { line-height: 1.45; }
+.user-court-map { overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--white); }
+.user-court-map-heading { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; font-size: 0.72rem; }
+.user-court-map-heading span { color: var(--muted); }
+.user-court-map iframe { display: block; width: 100%; height: 125px; border: 0; }
 .court-status { font-size: 0.72rem; font-weight: 800; text-transform: capitalize; }
 .court-status.inactive { color: var(--danger); }
 .court-status.active { color: var(--green); }
