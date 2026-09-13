@@ -5,16 +5,37 @@ window.FNOwnerPortal.getCourts = function() {
   return owner ? window.FNAdmin.state.courts.filter((court) => court.ownerId === owner.uid || court.owner === owner.name) : [];
 };
 
+window.FNOwnerPortal.readImageFile = function(file) {
+  if (!file) return Promise.resolve('');
+  if (!['image/jpeg', 'image/png'].includes(file.type)) return Promise.reject(new Error('Please choose a JPG or PNG image.'));
+  if (file.size > 5 * 1024 * 1024) return Promise.reject(new Error('Profile image must be 5 MB or smaller.'));
+  if (window.FNAdminData.isLive()) return window.FNAdminData.uploadAsset(file, 'profiles/owner-' + Date.now() + '-' + file.name);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Unable to read the selected image.'));
+    reader.readAsDataURL(file);
+  });
+};
+
 window.FNOwnerPortal.renderNotifications = function() {
   const list = document.getElementById('ownerNotificationsList');
   if (!list) return;
-  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => ['All', 'Owners'].includes(item.target));
-  const notificationMarkup = notifications.length ? notifications.map((item) => '<article class="user-notification"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="muted">No new notifications.</p>';
+  const owner = window.FNAdminAuth.user || {};
+  const ownerCourts = (window.FNAdmin.state.courts || []).filter((court) => court.ownerId === owner.uid || court.owner === owner.name);
+  const expiryLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
+  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => new Date(item.date || 0).getTime() >= expiryLimit && (() => {
+    if (item.target === 'All' || item.target === 'Owners') return true;
+    return item.target === 'Staff' && item.type === 'booking' && ownerCourts.some((court) => court.id === item.courtId || court.name === item.court);
+  })());
+  const notificationMarkup = notifications.length ? notifications.map((item) => '<article class="user-notification"><div class="notification-item-heading"><strong>' + item.title + '</strong><button class="notification-delete-button" type="button" data-owner-notification-delete="' + item.id + '" title="Delete notification" aria-label="Delete notification"><i class="fa-solid fa-trash"></i></button></div><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="muted">No new notifications.</p>';
   list.innerHTML = notificationMarkup;
+  list.querySelectorAll('[data-owner-notification-delete]').forEach((button) => button.addEventListener('click', () => window.FNAdmin.deleteNotification(button.dataset.ownerNotificationDelete, () => this.renderNotifications())));
   const preview = document.getElementById('ownerNotificationPreview');
   const summary = document.getElementById('ownerNotificationSummary');
   if (preview) preview.innerHTML = notifications.length ? notifications.slice(0, 5).map((item) => '<article class="owner-notification-preview-item"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="owner-notification-empty">No notifications yet.</p>';
   if (summary) summary.textContent = notifications.length + ' updates';
+  window.FNAdmin.cleanupExpiredNotifications().catch((error) => console.error('Unable to remove expired notifications:', error));
 };
 
 window.FNOwnerPortal.renderProfile = function(courts) {
@@ -24,10 +45,46 @@ window.FNOwnerPortal.renderProfile = function(courts) {
   if (!details) return;
   const ownerName = owner.name || 'Court owner';
   const initials = ownerName.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase();
-  if (identity) identity.innerHTML = '<div class="owner-profile-avatar">' + initials + '</div><div><strong>' + ownerName + '</strong><span>Venue account</span></div>';
+  const imageUrl = owner.photoURL || owner.photoUrl || '';
+  if (identity) identity.innerHTML = (imageUrl ? '<img class="user-profile-image" src="' + imageUrl + '" alt="' + ownerName + ' profile" />' : '<div class="owner-profile-avatar">' + initials + '</div>') + '<div><strong>' + ownerName + '</strong><span>Venue account</span></div>';
   details.innerHTML = '<div><span>Email address</span><strong>' + (owner.email || 'Not available') + '</strong></div>' +
     '<div><span>Account type</span><strong>' + (owner.role || 'Owner') + '</strong></div>' +
     '<div><span>Assigned courts</span><strong>' + courts.length + '</strong></div>';
+  const form = document.getElementById('ownerProfileForm');
+  if (form && form.dataset.profilePopulated !== 'true') {
+    form.elements.name.value = owner.name || '';
+    form.dataset.profilePopulated = 'true';
+  }
+};
+
+window.FNOwnerPortal.initProfileForm = function() {
+  const form = document.getElementById('ownerProfileForm');
+  const editButton = document.getElementById('ownerProfileEditBtn');
+  if (!form || form.dataset.fnInitialized === 'true') return;
+  if (editButton) editButton.addEventListener('click', () => {
+    const isHidden = form.classList.toggle('hidden');
+    editButton.innerHTML = '<i class="fa-solid fa-' + (isHidden ? 'pen' : 'xmark') + '"></i>';
+    editButton.setAttribute('aria-label', isHidden ? 'Edit profile' : 'Close profile editor');
+  });
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const owner = window.FNAdminAuth.user;
+    if (!owner) return;
+    const data = new FormData(form);
+    const file = data.get('photoFile');
+    this.readImageFile(file && file.size ? file : null).then((uploadedImage) => {
+      const profile = { id: owner.uid || 'demo-owner', name: data.get('name').trim(), email: owner.email || '', role: 'Owner', photoURL: uploadedImage || owner.photoURL || owner.photoUrl || '', updatedAt: new Date().toISOString() };
+      const save = window.FNAdminData.isLive() && owner.uid ? window.FNAdminData.save('users', owner.uid, profile) : Promise.resolve();
+      return save.then(() => profile);
+    }).then((profile) => {
+      Object.assign(owner, profile);
+      form.dataset.profilePopulated = 'true';
+      form.classList.add('hidden');
+      this.renderProfile(this.getCourts());
+      window.FNAdminComponents.showToast('Profile updated successfully.', 'success');
+    }).catch((error) => window.FNAdminComponents.showToast(error.message || 'Profile could not be updated.', 'error'));
+  });
+  form.dataset.fnInitialized = 'true';
 };
 
 window.FNOwnerPortal.getBookings = function(courts) {
@@ -38,7 +95,9 @@ window.FNOwnerPortal.getBookings = function(courts) {
 
 window.FNOwnerPortal.renderHeaderActions = function(bookings) {
   const pendingCount = bookings.filter((booking) => String(booking.bookingStatus || '').toLowerCase() === 'pending').length;
-  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => ['All', 'Owners'].includes(item.target));
+  const owner = window.FNAdminAuth.user || {};
+  const ownerCourts = (window.FNAdmin.state.courts || []).filter((court) => court.ownerId === owner.uid || court.owner === owner.name);
+  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => ['All', 'Owners'].includes(item.target) || (item.target === 'Staff' && item.type === 'booking' && ownerCourts.some((court) => court.id === item.courtId || court.name === item.court)));
   const bookingCount = document.getElementById('ownerBookingRequestsCount');
   const notificationCount = document.getElementById('ownerNotificationsCount');
   if (bookingCount) bookingCount.textContent = pendingCount > 99 ? '99+' : String(pendingCount);
@@ -112,6 +171,9 @@ window.FNOwnerPortal.renderSummary = function(courts, bookings) {
 };
 
 window.FNOwnerPortal.render = function() {
+  const ownerGreeting = document.getElementById('ownerGreetingText');
+  if (ownerGreeting) ownerGreeting.textContent = window.FNAdminComponents.getTimeGreeting();
+
   const panel = document.getElementById('ownerCourtPanel');
   const bookingsList = document.getElementById('ownerBookingsList');
   if (!panel || !bookingsList) return;
@@ -123,6 +185,7 @@ window.FNOwnerPortal.render = function() {
     if (ownerNotificationsPanel) ownerSection.appendChild(ownerNotificationsPanel);
   }
   this.renderNotifications();
+  this.initProfileForm();
 
   const courts = this.getCourts();
   const bookings = this.getBookings(courts);

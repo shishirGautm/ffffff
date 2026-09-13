@@ -3,8 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FUTSAL NEPAL Admin</title>
-    <meta name="description" content="FUTSAL NEPAL Admin Dashboard" />
+    <meta name="theme-color" content="#00b95a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Futsal Nepal" />
+    <meta name="description" content="FUTSAL NEPAL is a modern futsal booking and court management platform for players, owners, and administrators in Nepal." />
+    <meta name="keywords" content="futsal, football, booking, Nepal, courts, tournaments, admin dashboard" />
+    <meta property="og:title" content="FUTSAL NEPAL | Book, Play, Connect" />
+    <meta property="og:description" content="Book futsal courts, manage reservations, and run your venue with an integrated admin dashboard." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="assets/logo.svg" />
+    <meta property="og:site_name" content="FUTSAL NEPAL" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FUTSAL NEPAL" />
+    <meta name="twitter:description" content="Book, play, and connect through Nepal's futsal booking platform." />
+    <title>FUTSAL NEPAL | Book, Play, Connect</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="apple-touch-icon" href="assets/logo.svg" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -34,7 +51,7 @@
         <form id="authLoginForm" autocomplete="off">
           <input type="hidden" id="authLoginRole" value="admin" />
           <label>
-            Email or phone number
+            Email
             <input type="email" id="authLoginEmail" value="" autocomplete="off" required />
           </label>
           <label>
@@ -91,7 +108,7 @@
         <button class="user-mobile-menu" id="userMobileMenuBtn" type="button" aria-label="Open navigation" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
         <div>
           <p class="eyebrow text-green">FUTSAL NEPAL</p>
-          <h2>Welcome back, <span id="userDisplayName">player</span></h2>
+          <h2><span id="userGreetingText">Good morning</span>, <span id="userDisplayName">player</span></h2>
           <p class="muted">Find a pitch, manage your bookings, and keep your next match in sight.</p>
         </div>
         <button class="btn btn-secondary" id="userLogoutBtn">Logout</button>
@@ -108,7 +125,7 @@
               <label>Age<input name="age" type="number" min="1" max="120" /></label>
               <label>Contact number<input name="phone" type="tel" placeholder="+977-98XXXXXXXX" /></label>
               <label>Location<input name="location" type="text" placeholder="Kathmandu" /></label>
-              <label class="user-profile-field-wide">Profile image URL<input name="photoURL" type="url" placeholder="https://..." /></label>
+              <label class="user-profile-field-wide">Profile image<input name="photoFile" type="file" accept="image/jpeg,image/png" /><small class="muted">JPG or PNG, up to 5 MB</small></label>
               <button class="btn btn-primary" type="submit"><i class="fa-solid fa-user-pen"></i> Save profile</button>
             </form>
           </section>
@@ -200,7 +217,7 @@
       <header class="user-header">
         <div>
           <p class="eyebrow text-green">FUTSAL NEPAL</p>
-          <h2>Owner Portal</h2>
+          <h2><span id="ownerGreetingText">Good morning</span>, Owner Portal</h2>
           <p class="muted">Manage your court availability, pricing and bookings.</p>
         </div>
         <div class="owner-header-actions">
@@ -221,11 +238,16 @@
         </div>
       </header>
       <section class="user-panel owner-profile-panel" id="ownerProfilePanel">
-        <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Ground owner profile</h3></div></div>
+        <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Ground owner profile</h3></div><button class="icon-button" id="ownerProfileEditBtn" type="button" aria-label="Edit profile" title="Edit profile"><i class="fa-solid fa-pen"></i></button></div>
         <div class="owner-profile-content">
           <div id="ownerProfileIdentity" class="owner-profile-identity"></div>
           <div id="ownerProfileDetails" class="owner-profile-details"></div>
         </div>
+        <form id="ownerProfileForm" class="user-profile-form hidden">
+          <label>Name<input name="name" type="text" required /></label>
+          <label>Profile image<input name="photoFile" type="file" accept="image/jpeg,image/png" /><small class="muted">JPG or PNG, up to 5 MB</small></label>
+          <button class="btn btn-primary" type="submit"><i class="fa-solid fa-user-pen"></i> Save profile</button>
+        </form>
       </section>
       <section class="owner-summary-grid" id="ownerDashboardSummary"></section>
       <section class="user-panel owner-period-panel">
@@ -330,6 +352,11 @@
               <div>
                 <p class="eyebrow text-green"><span id="adminGreeting">Good Morning</span>, Admin 👋</p>
                 <h2>Here's what's happening with Futsal Nepal today.</h2>
+                <p class="hero-subtitle">Track bookings, monitor court performance, and keep your community active across every venue.</p>
+              </div>
+              <div class="hero-card__meta">
+                <div><span>Live bookings</span><strong id="heroLiveBookings">0</strong></div>
+                <div><span>Occupancy</span><strong id="heroOccupancy">0%</strong></div>
               </div>
             </div>
             <div id="statsGrid" class="stats-grid"></div>
@@ -551,6 +578,36 @@
             </div>
           </section>
         </div>
+
+        <footer class="site-footer">
+          <div class="site-footer__brand">
+            <div class="brand-mark"><img src="assets/logo.svg" alt="FUTSAL NEPAL logo" /></div>
+            <div>
+              <strong>FUTSAL NEPAL</strong>
+              <span>Book • Play • Connect</span>
+            </div>
+          </div>
+          <div class="site-footer__links">
+            <div>
+              <h4>Platform</h4>
+              <a href="#">Dashboard</a>
+              <a href="#">Bookings</a>
+              <a href="#">Courts</a>
+            </div>
+            <div>
+              <h4>Support</h4>
+              <a href="#">Help center</a>
+              <a href="#">Terms</a>
+              <a href="#">Privacy</a>
+            </div>
+            <div>
+              <h4>Contact</h4>
+              <a href="tel:+9779800000000">+977 98000 00000</a>
+              <a href="mailto:hello@futsalnepal.com">hello@futsalnepal.com</a>
+              <span>Kathmandu, Nepal</span>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
 
@@ -581,25 +638,46 @@
 
     <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-    <script src="js/firebase-config.js?v=20260913-7"></script>
-    <script src="js/firebase-data.js?v=20260913-3"></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "FUTSAL NEPAL",
+        "description": "Modern futsal court booking and management platform for players, owners, and administrators.",
+        "url": "https://futsalnepal.example",
+        "logo": "assets/logo.svg",
+        "sameAs": []
+      }
+    </script>
+
+    <script src="js/firebase-config.js?v=20260913-9"></script>
+    <script src="js/firebase-data.js?v=20260913-4"></script>
     <script src="js/components.js"></script>
     <script src="js/auth.js?v=20260913-7"></script>
-    <script src="js/user-portal.js?v=20260913-13"></script>
-    <script src="js/owner-portal.js?v=20260913-9"></script>
+    <script src="js/user-portal.js?v=20260913-17"></script>
+    <script src="js/owner-portal.js?v=20260913-13"></script>
     <script src="js/dashboard.js?v=20260912-4"></script>
     <script src="js/courts.js?v=20260913-4"></script>
-    <script src="js/bookings.js?v=20260913-3"></script>
+    <script src="js/bookings.js?v=20260913-4"></script>
     <script src="js/users.js?v=20260912-3"></script>
     <script src="js/teams.js"></script>
     <script src="js/matches.js"></script>
     <script src="js/tournaments.js"></script>
     <script src="js/payments.js"></script>
     <script src="js/reviews.js"></script>
-    <script src="js/notifications.js?v=20260912-4"></script>
+    <script src="js/notifications.js?v=20260913-6"></script>
     <script src="js/reports.js"></script>
     <script src="js/admins.js?v=20260912-2"></script>
     <script src="js/settings.js"></script>
     <script src="js/app.js"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('./sw.js').catch(function(error) {
+            console.warn('Offline app shell unavailable:', error);
+          });
+        });
+      }
+    </script>
   </body>
 </html>

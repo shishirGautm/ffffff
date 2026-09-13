@@ -46,7 +46,8 @@ window.FNAdminBookings.handleAction = function(action, bookingId) {
     const payment = (window.FNAdmin.state.payments || []).find((item) => item.bookingId === booking.id);
     const removeBooking = window.FNAdminData.isLive() ? window.FNAdminData.remove('bookings', booking.id) : Promise.resolve();
     const removePayment = payment && window.FNAdminData.isLive() ? window.FNAdminData.remove('payments', payment.id || 'TX-' + booking.id) : Promise.resolve();
-    Promise.all([removeBooking, removePayment]).then(() => {
+    const notifyUser = window.FNAdmin.createBookingNotification(booking, 'Booking deleted', booking.court + ' booking on ' + booking.date + ' was deleted by the administrator.');
+    Promise.all([removeBooking, removePayment, notifyUser]).then(() => {
       if (index >= 0) window.FNAdmin.state.bookings.splice(index, 1);
       if (payment) window.FNAdmin.state.payments = window.FNAdmin.state.payments.filter((item) => item.id !== payment.id);
       this.render();
@@ -68,11 +69,13 @@ window.FNAdminBookings.handleAction = function(action, bookingId) {
     if (window.FNAdmin.hasBookingConflict(booking, booking.id)) {
       booking.bookingStatus = 'Rejected';
       window.FNAdminComponents.showToast('Booking rejected: already booked. Please choose another time.', 'error');
+      window.FNAdmin.createBookingNotification(booking, 'Booking rejected', booking.court + ' could not confirm your booking because the time slot is no longer available.');
       window.FNAdmin.syncBookings(booking);
       this.render();
       return;
     }
     booking.bookingStatus = 'Confirmed';
+    window.FNAdmin.createBookingNotification(booking, 'Booking confirmed', booking.court + ' confirmed your booking for ' + booking.date + ' at ' + booking.startTime + '.');
     window.FNAdminComponents.showToast('Booking confirmed.', 'success');
   } else if (action === 'verify-payment') {
     booking.paymentStatus = 'Paid';
@@ -81,6 +84,7 @@ window.FNAdminBookings.handleAction = function(action, bookingId) {
     window.FNAdminComponents.showToast(booking.paymentMethod + ' payment verified.', 'success');
   } else if (action === 'cancel') {
     booking.bookingStatus = 'Cancelled';
+    window.FNAdmin.createBookingNotification(booking, 'Booking cancelled', booking.court + ' booking on ' + booking.date + ' was cancelled by the administrator.');
     window.FNAdminComponents.showToast('Booking cancelled.', 'success');
   }
 

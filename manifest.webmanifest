@@ -1,0 +1,19 @@
+{
+  "name": "FUTSAL NEPAL",
+  "short_name": "Futsal Nepal",
+  "description": "Book futsal courts, manage reservations, and run your venue.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4fbf7",
+  "theme_color": "#00b95a",
+  "icons": [
+    {
+      "src": "assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

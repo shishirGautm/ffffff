@@ -3,15 +3,56 @@ window.FNUserPortal = window.FNUserPortal || {};
 window.FNUserPortal.getUserBookings = function() {
   const user = window.FNAdminAuth.user;
   if (!user) return [];
-  return window.FNAdmin.state.bookings.filter((booking) => booking.userEmail === user.email || booking.user === user.name);
+  return (window.FNAdmin.state.bookings || []).filter((booking) => booking.userId === user.uid || (!booking.userId && booking.userEmail === user.email) || (window.FNAdmin.demoMode && !booking.userId && booking.user === user.name));
+};
+
+window.FNUserPortal.deleteNotification = function(notificationId) {
+  if (!notificationId) return Promise.resolve(false);
+  const index = (window.FNAdmin.state.notifications || []).findIndex((item) => item.id === notificationId);
+  if (index < 0) return Promise.resolve(false);
+  if (!window.confirm('Delete this notification permanently?')) return Promise.resolve(false);
+  const remove = window.FNAdminData.isLive() ? window.FNAdminData.remove('notifications', notificationId) : Promise.resolve();
+  return remove.then(() => {
+    window.FNAdmin.state.notifications.splice(index, 1);
+    this.renderNotifications();
+    window.FNAdminComponents.showToast('Notification deleted.', 'success');
+    return true;
+  }).catch((error) => {
+    window.FNAdminComponents.showToast('Notification could not be deleted: ' + (error.message || 'permission denied.'), 'error');
+    return false;
+  });
 };
 
 window.FNUserPortal.renderNotifications = function() {
   const list = document.getElementById('userNotificationsList');
   if (!list) return;
   const user = window.FNAdminAuth.user;
-  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => ['All', 'Users'].includes(item.target) && (!item.targetUserId || (user && item.targetUserId === user.uid)));
-  list.innerHTML = notifications.length ? notifications.map((item) => '<article class="user-notification"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="muted">No new notifications.</p>';
+  const expiryLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
+  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => {
+    const target = String(item.target || '').toLowerCase();
+    const belongsToUser = user && (item.userId === user.uid || item.targetUserId === user.uid || item.targetUserEmail === user.email);
+    const bookingUpdate = item.type === 'booking' && ['booking confirmed', 'booking rejected'].includes(String(item.title || '').toLowerCase());
+    return new Date(item.date || 0).getTime() >= expiryLimit && bookingUpdate && belongsToUser;
+  });
+  list.innerHTML = notifications.length ? notifications.map((item) => {
+    const canDelete = user && (item.userId === user.uid || item.targetUserId === user.uid || item.targetUserEmail === user.email);
+    return '<article class="user-notification"><div class="notification-item-heading"><strong>' + item.title + '</strong>' + (canDelete ? '<button class="notification-delete-button" type="button" data-user-notification-delete="' + item.id + '" title="Delete notification" aria-label="Delete notification"><i class="fa-solid fa-trash"></i></button>' : '') + '</div><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>';
+  }).join('') : '<p class="muted">No new notifications.</p>';
+  list.querySelectorAll('[data-user-notification-delete]').forEach((button) => button.addEventListener('click', () => this.deleteNotification(button.dataset.userNotificationDelete)));
+  window.FNAdmin.cleanupExpiredNotifications().catch((error) => console.error('Unable to remove expired notifications:', error));
+};
+
+window.FNUserPortal.readImageFile = function(file) {
+  if (!file) return Promise.resolve('');
+  if (!['image/jpeg', 'image/png'].includes(file.type)) return Promise.reject(new Error('Please choose a JPG or PNG image.'));
+  if (file.size > 5 * 1024 * 1024) return Promise.reject(new Error('Profile image must be 5 MB or smaller.'));
+  if (window.FNAdminData.isLive()) return window.FNAdminData.uploadAsset(file, 'profiles/' + Date.now() + '-' + file.name);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Unable to read the selected image.'));
+    reader.readAsDataURL(file);
+  });
 };
 
 window.FNUserPortal.renderProfile = function() {
@@ -23,7 +64,8 @@ window.FNUserPortal.renderProfile = function() {
   const fallbackName = user.email ? user.email.split('@')[0].replace(/[._-]+/g, ' ') : 'player';
   const name = profile.name && profile.name !== profile.email ? profile.name : (user.name && user.name !== user.email ? user.name : fallbackName);
   const initials = name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase();
-  const upcomingBookings = this.getUserBookings().filter((booking) => booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Rejected').length;
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingBookings = this.getUserBookings().filter((booking) => booking.date >= today && !['Cancelled', 'Rejected'].includes(booking.bookingStatus)).length;
   const imageUrl = profile.photoURL || profile.photoUrl || (typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? profile.avatar : '');
   const identityImage = imageUrl ? '<img class="user-profile-image" src="' + imageUrl + '" alt="' + name + ' profile" />' : '<div class="owner-profile-avatar">' + initials + '</div>';
   identity.innerHTML = identityImage + '<div><strong>' + name + '</strong><span>Player account</span></div>';
@@ -34,17 +76,18 @@ window.FNUserPortal.renderProfile = function() {
     profileForm.elements.age.value = profile.age || '';
     profileForm.elements.phone.value = profile.phone || profile.contactNumber || '';
     profileForm.elements.location.value = profile.location || '';
-    profileForm.elements.photoURL.value = imageUrl;
     profileForm.dataset.profilePopulated = 'true';
   }
 };
 
 window.FNUserPortal.updateDashboard = function() {
   const userName = document.getElementById('userDisplayName');
+  const greeting = document.getElementById('userGreetingText');
   const venueCount = document.getElementById('userVenueCount');
   const teamCount = document.getElementById('userTeamCount');
   const user = window.FNAdminAuth.user;
   this.renderProfile();
+  if (greeting) greeting.textContent = window.FNAdminComponents.getTimeGreeting();
   if (userName && user) {
     const fallbackName = user.email ? user.email.split('@')[0].replace(/[._-]+/g, ' ') : 'player';
     userName.textContent = user.name && user.name !== user.email ? user.name : fallbackName;
@@ -62,11 +105,13 @@ window.FNUserPortal.updateTimeSlots = function() {
   const timeSelect = document.getElementById('userBookingTime');
   if (!courtSelect || !timeSelect) return;
 
-  const openingMinutes = this.toMinutes('06:00');
-  const closingMinutes = this.toMinutes('22:00');
+  const selectedCourt = (window.FNAdmin.state.courts || []).find((court) => court.id === courtSelect.value);
+  const openingMinutes = this.toMinutes(selectedCourt?.openingTime || '06:00');
+  const closingMinutes = this.toMinutes(selectedCourt?.closingTime || '22:00');
+  const slotDuration = Number(selectedCourt?.slotDuration || 60);
   timeSelect.innerHTML = '';
-  for (let start = openingMinutes; start + 60 <= closingMinutes; start += 60) {
-    const end = start + 60;
+  for (let start = openingMinutes; start + slotDuration <= closingMinutes; start += slotDuration) {
+    const end = start + slotDuration;
     const startTime = this.toTime(start);
     const endTime = this.toTime(end);
     const option = document.createElement('option');
@@ -92,6 +137,24 @@ window.FNUserPortal.toTimeLabel = function(time) {
   return String(hour).padStart(2, '0') + ':' + String(parts[1]).padStart(2, '0') + ' ' + period;
 };
 
+window.FNUserPortal.getCourtReviews = function(courtName) {
+  const currentUserId = window.FNAdminAuth.user?.uid || '';
+  return (window.FNAdmin.state.reviews || []).filter((review) => review.court === courtName && (review.status === 'Approved' || (review.status === 'Pending' && currentUserId && review.userId === currentUserId)));
+};
+
+window.FNUserPortal.escapeHtml = function(value) {
+  return String(value || '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+};
+
+window.FNUserPortal.openCourtReviews = function(court) {
+  const reviews = this.getCourtReviews(court.name);
+  const content = reviews.length
+    ? reviews.map((review) => '<article class="court-review-item"><div class="court-review-heading"><strong>' + this.escapeHtml(review.user) + '</strong><span>' + Number(review.rating || 0) + '/5 <i class="fa-solid fa-star"></i></span></div><p>' + this.escapeHtml(review.review) + '</p><small>' + this.escapeHtml(this.formatDate(review.date)) + (review.status === 'Pending' ? ' · Awaiting approval' : '') + '</small></article>').join('')
+    : '<div class="empty-state"><i class="fa-regular fa-star"></i><h3>No reviews yet</h3><p>Reviews will appear after players complete a booking.</p></div>';
+  window.FNAdminComponents.openModal('<div class="panel__header"><div><p class="eyebrow text-green">Player feedback</p><h3>' + this.escapeHtml(court.name) + '</h3></div><button class="icon-button" data-close-modal="true" aria-label="Close reviews"><i class="fa-solid fa-xmark"></i></button></div><div class="court-review-list">' + content + '</div>');
+  document.querySelectorAll('[data-close-modal="true"]').forEach((button) => button.addEventListener('click', window.FNAdminComponents.closeModal));
+};
+
 window.FNUserPortal.updateAmount = function() {
   const courtSelect = document.getElementById('userBookingCourt');
   const amount = document.getElementById('userBookingAmount');
@@ -110,7 +173,7 @@ window.FNUserPortal.updateAmount = function() {
       const date = document.getElementById('userBookingDate').value;
       const timeSlot = document.getElementById('userBookingTime').value.split('|');
       const startTime = timeSlot[0];
-      const conflict = court && window.FNAdmin.state.bookings.some((booking) => (booking.courtId === court.id || booking.court === court.name) && booking.date === date && booking.startTime === startTime && booking.bookingStatus !== 'Cancelled');
+      const conflict = court && window.FNAdmin.hasBookingConflict({ courtId: court.id, court: court.name, date, startTime, endTime: timeSlot[1] });
       availability.textContent = court ? (conflict ? 'Not available for this time' : 'Available for this time') : '';
       availability.classList.toggle('unavailable', !!conflict);
     }
@@ -124,18 +187,47 @@ window.FNUserPortal.renderBookings = function() {
   if (!list || !count || !next) return;
 
   const bookings = this.getUserBookings().sort((first, second) => (first.date + first.startTime).localeCompare(second.date + second.startTime));
-  const upcoming = bookings.filter((booking) => booking.bookingStatus !== 'Cancelled');
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = bookings.filter((booking) => booking.date >= today && !['Cancelled', 'Rejected'].includes(booking.bookingStatus));
   this.updateDashboard();
   count.textContent = upcoming.length + ' upcoming booking' + (upcoming.length === 1 ? '' : 's');
   next.textContent = upcoming[0] ? upcoming[0].court + ' • ' + this.formatDate(upcoming[0].date) + ' at ' + upcoming[0].startTime : 'Book a court to see your next match here.';
 
-  list.innerHTML = bookings.length ? bookings.map((booking) => '<div class="user-booking-item"><div><strong>' + booking.court + '</strong><small>' + this.formatDate(booking.date) + ' • ' + booking.startTime + ' - ' + booking.endTime + '</small><small>' + booking.bookingStatus + ' • ' + booking.paymentMethod + '</small></div><div><span class="booking-price">NPR ' + Number(booking.amount || 0).toLocaleString() + '</span>' + (booking.bookingStatus === 'Pending' || booking.bookingStatus === 'Confirmed' ? '<button class="booking-cancel" type="button" data-booking-id="' + booking.id + '">Cancel</button>' : '') + '</div></div>').join('') : '<p class="muted">You have no bookings yet.</p>';
+  list.innerHTML = bookings.length ? bookings.map((booking) => {
+    const existingReview = (window.FNAdmin.state.reviews || []).find((review) => review.bookingId === booking.id || (review.user === booking.user && review.court === booking.court));
+    const canReview = ['Confirmed', 'Completed'].includes(booking.bookingStatus) || booking.paymentStatus === 'Paid';
+    const bookingStart = new Date(booking.date + 'T' + booking.startTime);
+    const canCancel = ['Pending', 'Confirmed'].includes(booking.bookingStatus) && Number.isFinite(bookingStart.getTime()) && bookingStart.getTime() - Date.now() > 60 * 60 * 1000;
+    const reviewAction = canReview && !existingReview
+      ? '<button class="booking-review" type="button" data-review-booking-id="' + booking.id + '">Rate & review</button>'
+      : (existingReview ? '<span class="review-status">Reviewed</span>' : '');
+    return '<div class="user-booking-item"><div><strong>' + booking.court + '</strong><small>' + this.formatDate(booking.date) + ' • ' + booking.startTime + ' - ' + booking.endTime + '</small><small>' + booking.bookingStatus + ' • ' + booking.paymentMethod + '</small></div><div><span class="booking-price">NPR ' + Number(booking.amount || 0).toLocaleString() + '</span>' + (canCancel ? '<button class="booking-cancel" type="button" data-booking-id="' + booking.id + '">Cancel</button>' : '') + reviewAction + '</div></div>';
+  }).join('') : '<p class="muted">You have no bookings yet.</p>';
+
   list.querySelectorAll('[data-booking-id]').forEach((button) => button.addEventListener('click', () => {
     const booking = window.FNAdmin.state.bookings.find((item) => item.id === button.dataset.bookingId);
     if (!booking) return;
+    const bookingStart = new Date(booking.date + 'T' + booking.startTime);
+    if (!['Pending', 'Confirmed'].includes(booking.bookingStatus) || !Number.isFinite(bookingStart.getTime()) || bookingStart.getTime() - Date.now() <= 60 * 60 * 1000) {
+      this.renderBookings();
+      return;
+    }
+    const proceed = window.confirm('Cancel booking for ' + booking.court + ' on ' + booking.date + '?');
+    if (!proceed) return;
     booking.bookingStatus = 'Cancelled';
-    window.FNAdmin.syncBookings(booking).then(() => window.FNAdminComponents.showToast('Booking cancelled.', 'success')).catch(() => window.FNAdminComponents.showToast('Unable to sync the cancellation.', 'error'));
-    this.renderBookings();
+    window.FNAdmin.createBookingNotification(booking, 'Booking cancelled', 'Your booking at ' + booking.court + ' on ' + booking.date + ' has been cancelled.');
+    window.FNAdmin.syncBookings(booking)
+      .then(() => {
+        window.FNAdminComponents.showToast('Booking cancelled.', 'success');
+        this.renderBookings();
+      })
+      .catch(() => window.FNAdminComponents.showToast('Unable to sync the cancellation.', 'error'));
+  }));
+
+  list.querySelectorAll('[data-review-booking-id]').forEach((button) => button.addEventListener('click', () => {
+    const booking = window.FNAdmin.state.bookings.find((item) => item.id === button.dataset.reviewBookingId);
+    if (!booking) return;
+    window.FNAdminReviews.openReviewModal(booking);
   }));
 };
 
@@ -153,10 +245,13 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
     const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapLocation);
     const mapEmbedUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(mapLocation) + '&output=embed';
     const imageUrl = (court.images && court.images[0]) || 'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=640&q=80';
+    const reviews = this.getCourtReviews(court.name);
+    const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length : Number(court.rating || 0);
+    const ratingDisplay = averageRating ? '<span class="court-rating"><i class="fa-solid fa-star"></i> ' + averageRating.toFixed(1) + '</span><span class="court-review-count">' + reviews.length + ' review' + (reviews.length === 1 ? '' : 's') + '</span>' : '<span class="court-review-count">No reviews yet</span>';
     const bookingAction = court.status === 'active' ? '<button class="btn btn-primary user-court-book" data-court-id="' + court.id + '" type="button">Book now</button>' : '<span class="court-status inactive">Currently unavailable</span>';
     const amenities = [['parking', 'Parking'], ['washroom', 'Washroom'], ['changingRoom', 'Changing room'], ['shower', 'Shower'], ['lighting', 'Lights']].filter(([key]) => court[key]).map(([, label]) => '<span>' + label + '</span>').join('');
     const contact = court.contactNumber ? '<a href="tel:' + court.contactNumber + '"><i class="fa-solid fa-phone"></i> ' + court.contactNumber + '</a>' : '<span>Contact not available</span>';
-    return '<article class="user-court-card"><img class="court-card-image" src="' + imageUrl + '" alt="' + court.name + '" /><h4>' + court.name + '</h4><p class="user-court-address"><i class="fa-solid fa-location-dot"></i> ' + location + '</p><div class="court-meta"><span class="court-price">NPR ' + Number(court.pricePerHour || 0).toLocaleString() + '/hr</span><span>' + (court.openingTime || '08:00') + ' - ' + (court.closingTime || '22:00') + '</span></div><div class="user-court-specs"><span><strong>Type</strong>' + (court.type || 'Indoor') + '</span><span><strong>Turf</strong>' + (court.turfType || 'Artificial') + '</span></div><div class="user-court-map"><div class="user-court-map-heading"><strong>' + court.name + '</strong><span>Live location</span></div><iframe src="' + mapEmbedUrl + '" title="Live map for ' + court.name + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div><div class="user-court-contact">' + contact + '</div>' + (amenities ? '<div class="user-court-amenities">' + amenities + '</div>' : '') + (court.description ? '<p class="user-court-description">' + court.description + '</p>' : '') + '<div class="court-actions">' + bookingAction + '<a class="court-map-link" href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + court.name + ' map</a></div></article>';
+    return '<article class="user-court-card"><img class="court-card-image" src="' + imageUrl + '" alt="' + court.name + '" /><div class="court-card-title"><h4>' + court.name + '</h4><div class="court-rating-summary">' + ratingDisplay + '</div></div><p class="user-court-address"><i class="fa-solid fa-location-dot"></i> ' + location + '</p><div class="court-meta"><span class="court-price">NPR ' + Number(court.pricePerHour || 0).toLocaleString() + '/hr</span><span>' + (court.openingTime || '08:00') + ' - ' + (court.closingTime || '22:00') + '</span></div><div class="user-court-specs"><span><strong>Type</strong>' + (court.type || 'Indoor') + '</span><span><strong>Turf</strong>' + (court.turfType || 'Artificial') + '</span></div><div class="user-court-map"><div class="user-court-map-heading"><strong>' + court.name + '</strong><span>Live location</span></div><iframe src="' + mapEmbedUrl + '" title="Live map for ' + court.name + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div><div class="user-court-contact">' + contact + '</div>' + (amenities ? '<div class="user-court-amenities">' + amenities + '</div>' : '') + (court.description ? '<p class="user-court-description">' + court.description + '</p>' : '') + '<div class="court-actions">' + bookingAction + '<button class="court-reviews-link" type="button" data-court-reviews="' + court.id + '"><i class="fa-regular fa-star"></i> View reviews</button><a class="court-map-link" href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + court.name + ' map</a></div></article>';
   }).join('') : '<div class="empty-state user-venue-empty"><i class="fa-solid fa-magnifying-glass"></i><h3>No venues found</h3><p>Try a different futsal name or location.</p></div>';
 
   directory.querySelectorAll('.user-court-book').forEach((button) => {
@@ -169,6 +264,12 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
       this.updateTimeSlots();
       this.updateAmount();
       bookingForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  directory.querySelectorAll('[data-court-reviews]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const court = window.FNAdmin.state.courts.find((item) => item.id === button.dataset.courtReviews);
+      if (court) this.openCourtReviews(court);
     });
   });
 };
@@ -223,11 +324,16 @@ window.FNUserPortal.init = function() {
         return;
       }
       const data = new FormData(profileForm);
-      const profile = { id: user.uid, name: data.get('name').trim(), email: user.email || '', role: user.role || 'User', age: data.get('age') ? Number(data.get('age')) : '', phone: data.get('phone').trim(), location: data.get('location').trim(), photoURL: data.get('photoURL').trim(), updatedAt: new Date().toISOString() };
-      const save = window.FNAdminData.isLive()
-        ? window.FNAdminData.save('users', user.uid, profile)
-        : Promise.resolve((window.FNAdmin.state.users = [...(window.FNAdmin.state.users || []).filter((item) => item.id !== user.uid), profile]));
-      save.then(() => {
+      const photoFile = data.get('photoFile');
+      const existingProfile = (window.FNAdmin.state.users || []).find((item) => item.id === user.uid || item.email === user.email) || user;
+      const profileImageUrl = existingProfile.photoURL || existingProfile.photoUrl || '';
+      this.readImageFile(photoFile && photoFile.size ? photoFile : null).then((uploadedImage) => {
+        const profile = { id: user.uid, name: data.get('name').trim(), email: user.email || '', role: user.role || 'User', age: data.get('age') ? Number(data.get('age')) : '', phone: data.get('phone').trim(), location: data.get('location').trim(), photoURL: uploadedImage || profileImageUrl, updatedAt: new Date().toISOString() };
+        const save = window.FNAdminData.isLive()
+          ? window.FNAdminData.save('users', user.uid, profile)
+          : Promise.resolve((window.FNAdmin.state.users = [...(window.FNAdmin.state.users || []).filter((item) => item.id !== user.uid), profile]));
+        return save.then(() => profile);
+      }).then((profile) => {
         window.FNAdminAuth.user.name = profile.name;
         window.FNAdmin.state.users = [...(window.FNAdmin.state.users || []).filter((item) => item.id !== user.uid), profile];
         profileForm.dataset.profilePopulated = 'true';
@@ -345,7 +451,7 @@ window.FNUserPortal.init = function() {
     const timeSlot = timeSelect.value.split('|');
     const startTime = timeSlot[0];
     const endTime = timeSlot[1];
-    const firebaseUser = window.firebase && firebase.auth && firebase.auth().currentUser;
+    const firebaseUser = !window.FNAdmin.demoMode && window.firebase && firebase.apps && firebase.apps.length && firebase.auth ? firebase.auth().currentUser : null;
     const userId = (firebaseUser && firebaseUser.uid) || user.uid;
     if (!userId) {
       window.FNAdminComponents.showToast('Your Firebase login session has expired. Please log in again.', 'error');

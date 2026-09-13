@@ -10,14 +10,16 @@ window.FNAdmin.config = {
   measurementId: "G-Z0E0STK2HQ"
 };
 
-window.FNAdmin.demoMode = Object.values(window.FNAdmin.config).some((value) => typeof value === 'string' && value.includes('YOUR_'));
+const isLocalFile = typeof window !== 'undefined' && window.location && window.location.protocol === 'file:';
+const demoRequested = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1';
+window.FNAdmin.demoMode = isLocalFile || demoRequested || Object.values(window.FNAdmin.config).some((value) => typeof value === 'string' && value.includes('YOUR_'));
 window.FNAdmin.state = {
   courts: [
-    { id: 'court-1', name: 'Anveshan Futsal', owner: 'Aarav Shrestha', city: 'Kathmandu', district: 'Kathmandu', province: 'Bagmati', address: 'Tinkune, Kathmandu', pricePerHour: 2200, rating: 4.8, bookings: 68, status: 'active', images: ['https://images.unsplash.com/...'], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '08:00', closingTime: '22:00', contactNumber: '+977-9800000001', description: 'Premium indoor futsal court with a modern synthetic turf.' },
-    { id: 'court-2', name: 'GoalZone Futsal', owner: 'Sujan Gurung', city: 'Lalitpur', district: 'Lalitpur', province: 'Bagmati', address: 'Jawalakhel, Lalitpur', pricePerHour: 2500, rating: 4.7, bookings: 52, status: 'active', images: ['https://images.unsplash.com/...'], type: 'Indoor', turfType: 'Hybrid', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '09:00', closingTime: '23:00', contactNumber: '+977-9800000002', description: 'Convenient and family-friendly futsal venue.' },
-    { id: 'court-3', name: 'The Futsal Hub', owner: 'Niraj KC', city: 'Bhaktapur', district: 'Bhaktapur', province: 'Bagmati', address: 'Suryabinayak, Bhaktapur', pricePerHour: 2100, rating: 4.5, bookings: 44, status: 'active', images: ['https://images.unsplash.com/...'], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '08:30', closingTime: '21:30', contactNumber: '+977-9800000003', description: 'Fast-paced community venue for evening matches.' },
-    { id: 'court-4', name: 'PlayArena', owner: 'Rajesh Ghimire', city: 'Pokhara', district: 'Kaski', province: 'Gandaki', address: 'Lakeside, Pokhara', pricePerHour: 2700, rating: 4.9, bookings: 84, status: 'active', images: ['https://images.unsplash.com/...'], type: 'Indoor', turfType: 'Synthetic', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '08:00', closingTime: '22:00', contactNumber: '+977-9800000004', description: 'Top-rated venue with premium lights and excellent turf quality.' },
-    { id: 'court-5', name: 'GamePoint Futsal', owner: 'Manish Thapa', city: 'Biratnagar', district: 'Morang', province: 'Koshi', address: 'Central Bus Park, Biratnagar', pricePerHour: 2300, rating: 4.6, bookings: 38, status: 'inactive', images: ['https://images.unsplash.com/...'], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '10:00', closingTime: '21:00', contactNumber: '+977-9800000005', description: 'Ideal for weekend tournments and team practice.' },
+    { id: 'court-1', name: 'Anveshan Futsal', owner: 'Aarav Shrestha', city: 'Kathmandu', district: 'Kathmandu', province: 'Bagmati', address: 'Tinkune, Kathmandu', pricePerHour: 2200, rating: 4.8, bookings: 68, status: 'active', images: [], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '08:00', closingTime: '22:00', contactNumber: '+977-9800000001', description: 'Premium indoor futsal court with a modern synthetic turf.' },
+    { id: 'court-2', name: 'GoalZone Futsal', owner: 'Sujan Gurung', city: 'Lalitpur', district: 'Lalitpur', province: 'Bagmati', address: 'Jawalakhel, Lalitpur', pricePerHour: 2500, rating: 4.7, bookings: 52, status: 'active', images: [], type: 'Indoor', turfType: 'Hybrid', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '09:00', closingTime: '23:00', contactNumber: '+977-9800000002', description: 'Convenient and family-friendly futsal venue.' },
+    { id: 'court-3', name: 'The Futsal Hub', owner: 'Niraj KC', city: 'Bhaktapur', district: 'Bhaktapur', province: 'Bagmati', address: 'Suryabinayak, Bhaktapur', pricePerHour: 2100, rating: 4.5, bookings: 44, status: 'active', images: [], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '08:30', closingTime: '21:30', contactNumber: '+977-9800000003', description: 'Fast-paced community venue for evening matches.' },
+    { id: 'court-4', name: 'PlayArena', owner: 'Rajesh Ghimire', city: 'Pokhara', district: 'Kaski', province: 'Gandaki', address: 'Lakeside, Pokhara', pricePerHour: 2700, rating: 4.9, bookings: 84, status: 'active', images: [], type: 'Indoor', turfType: 'Synthetic', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '08:00', closingTime: '22:00', contactNumber: '+977-9800000004', description: 'Top-rated venue with premium lights and excellent turf quality.' },
+    { id: 'court-5', name: 'GamePoint Futsal', owner: 'Manish Thapa', city: 'Biratnagar', district: 'Morang', province: 'Koshi', address: 'Central Bus Park, Biratnagar', pricePerHour: 2300, rating: 4.6, bookings: 38, status: 'inactive', images: [], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '10:00', closingTime: '21:00', contactNumber: '+977-9800000005', description: 'Ideal for weekend tournments and team practice.' },
     { id: 'court-6', name: 'Kathmandu Kickers Arena', owner: 'Venue Owner 6', city: 'Kathmandu', district: 'Kathmandu', province: 'Bagmati', address: 'Baneshwor, Kathmandu', pricePerHour: 2400, rating: 4.4, bookings: 0, status: 'active', images: [], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: false, shower: false, lighting: true, openingTime: '07:00', closingTime: '22:00', contactNumber: '+977-9800000006', description: 'Editable starter venue listing.' },
     { id: 'court-7', name: 'Lalitpur Soccer Zone', owner: 'Venue Owner 7', city: 'Lalitpur', district: 'Lalitpur', province: 'Bagmati', address: 'Satdobato, Lalitpur', pricePerHour: 2300, rating: 4.4, bookings: 0, status: 'active', images: [], type: 'Indoor', turfType: 'Synthetic', parking: true, washroom: true, changingRoom: true, shower: false, lighting: true, openingTime: '06:00', closingTime: '22:00', contactNumber: '+977-9800000007', description: 'Editable starter venue listing.' },
     { id: 'court-8', name: 'Bhaktapur Goal Station', owner: 'Venue Owner 8', city: 'Bhaktapur', district: 'Bhaktapur', province: 'Bagmati', address: 'Kamalbinayak, Bhaktapur', pricePerHour: 2000, rating: 4.3, bookings: 0, status: 'active', images: [], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: false, shower: false, lighting: true, openingTime: '08:00', closingTime: '21:00', contactNumber: '+977-9800000008', description: 'Editable starter venue listing.' },
@@ -103,12 +105,12 @@ window.FNAdmin.syncBookings = function(booking) {
   if (!window.firebase || !firebase.firestore) return Promise.reject(new Error('Firebase is not available.'));
   const database = firebase.firestore();
   const saveBooking = database.collection('bookings').doc(booking.id).set(booking, { merge: true });
-  if (booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Rejected') return saveBooking;
+  if (booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Rejected') return saveBooking.then(() => window.FNAdminData.logActivity('update', 'bookings', booking.id, { status: booking.bookingStatus }));
   const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
   return saveBooking.then(() => slotRef.get().then((slot) => {
     if (slot.exists && slot.data().bookingId === booking.id) return slotRef.set({ status: 'Cancelled' }, { merge: true });
     return null;
-  }));
+  })).then(() => window.FNAdminData.logActivity('update', 'bookings', booking.id, { status: booking.bookingStatus }));
 };
 
 window.FNAdmin.deleteBooking = function(booking) {
@@ -127,7 +129,7 @@ window.FNAdmin.deleteBooking = function(booking) {
       const batch = database.batch();
       batch.delete(bookingRef);
       if (slot.exists) batch.delete(slotRef);
-      return batch.commit();
+      return batch.commit().then(() => window.FNAdminData.logActivity('delete', 'bookings', booking.id));
     }).then(() => {
       this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
       window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
@@ -137,7 +139,7 @@ window.FNAdmin.deleteBooking = function(booking) {
   batch.delete(bookingRef);
   batch.delete(database.collection('payments').doc('TX-' + booking.id));
   batch.delete(slotRef);
-  return batch.commit().then(() => {
+  return batch.commit().then(() => window.FNAdminData.logActivity('delete', 'bookings', booking.id)).then(() => {
     this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
   });
@@ -150,7 +152,7 @@ window.FNAdmin.createBooking = function(booking) {
     this.state.bookings.push(booking);
     this.state.payments.push({ id: 'TX-' + booking.id, bookingId: booking.id, user: booking.user, userId: booking.userId, courtId: booking.courtId, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' });
     this.state.notifications = this.state.notifications || [];
-    this.state.notifications.push({ id: 'booking-' + booking.id, title: 'Booking submitted', message: booking.court + ' is booked for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Users', targetUserId: booking.userId, userId: booking.userId, date: new Date().toISOString(), status: 'Sent', type: 'booking' });
+    this.state.notifications.push({ id: 'booking-' + booking.id, title: 'New booking received', message: booking.user + ' booked ' + booking.court + ' for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Staff', courtId: booking.courtId, date: new Date().toISOString(), status: 'Sent', type: 'booking' });
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
     return Promise.resolve(booking);
   }
@@ -162,7 +164,7 @@ window.FNAdmin.createBooking = function(booking) {
   const paymentRef = database.collection('payments').doc('TX-' + booking.id);
   const notificationRef = database.collection('notifications').doc('booking-' + booking.id);
   const payment = { id: 'TX-' + booking.id, bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, user: booking.user, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' };
-  const notification = { id: 'booking-' + booking.id, title: 'Booking submitted', message: booking.court + ' is booked for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Users', targetUserId: booking.userId, userId: booking.userId, date: new Date().toISOString(), status: 'Sent', type: 'booking' };
+  const notification = { id: 'booking-' + booking.id, bookingId: booking.id, userId: booking.userId, title: 'New booking received', message: booking.user + ' booked ' + booking.court + ' for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Staff', courtId: booking.courtId, date: new Date().toISOString(), status: 'Sent', type: 'booking' };
   return database.runTransaction((transaction) => transaction.get(slotRef).then((slot) => {
     if (slot.exists && slot.data().status !== 'Cancelled') {
       const conflictError = new Error('Already booked. Please choose another time.');
@@ -177,7 +179,7 @@ window.FNAdmin.createBooking = function(booking) {
     window.FNAdmin.state.bookings = [...(window.FNAdmin.state.bookings || []).filter((item) => item.id !== booking.id), booking];
     window.FNAdmin.state.notifications = [...(window.FNAdmin.state.notifications || []).filter((item) => item.id !== notification.id), notification];
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
-    return booking;
+    return window.FNAdminData.logActivity('create', 'bookings', booking.id, { paymentId: payment.id, notificationId: notification.id }).then(() => booking);
   });
 };
 
@@ -188,7 +190,43 @@ window.FNAdmin.syncCourt = function(court) {
   }
 
   if (!window.firebase || !firebase.firestore) return Promise.reject(new Error('Firebase is not available.'));
-  return firebase.firestore().collection('courts').doc(court.id).set(court, { merge: true });
+  return firebase.firestore().collection('courts').doc(court.id).set(court, { merge: true }).then(() => window.FNAdminData.logActivity('update', 'courts', court.id));
+};
+
+window.FNAdmin.cleanupExpiredNotifications = function() {
+  const expiryLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
+  const notifications = this.state.notifications || [];
+  const expired = notifications.filter((item) => {
+    const createdAt = new Date(item.date || 0).getTime();
+    return Number.isFinite(createdAt) && createdAt < expiryLimit;
+  });
+  if (!expired.length) return Promise.resolve();
+
+  this.state.notifications = notifications.filter((item) => !expired.includes(item));
+  if (this.demoMode) {
+    window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
+    return Promise.resolve();
+  }
+
+  return Promise.all(expired.map((item) => window.FNAdminData.remove('notifications', item.id))).then(() => undefined);
+};
+
+window.FNAdmin.deleteNotification = function(notificationId, rerender) {
+  const notifications = this.state.notifications || [];
+  const index = notifications.findIndex((item) => item.id === notificationId);
+  if (index < 0) return Promise.resolve(false);
+  const notification = notifications[index];
+  if (!window.confirm('Delete this notification?')) return Promise.resolve(false);
+  const remove = this.demoMode ? Promise.resolve() : window.FNAdminData.remove('notifications', notification.id);
+  return remove.then(() => {
+    this.state.notifications.splice(index, 1);
+    if (typeof rerender === 'function') rerender();
+    window.FNAdminComponents.showToast('Notification deleted.', 'success');
+    return true;
+  }).catch((error) => {
+    window.FNAdminComponents.showToast('Notification could not be deleted: ' + (error.message || 'permission denied.'), 'error');
+    return false;
+  });
 };
 
 window.FNAdmin.subscribeToBookings = function() {
@@ -248,4 +286,29 @@ window.FNAdmin.ensureFirebase = function() {
   }
 
   return !!(firebase.apps && firebase.apps.length > 0);
+};
+
+window.FNAdmin.createBookingNotification = function(booking, title, message) {
+  const targetUser = (this.state.users || []).find((user) => (booking.userId && user.id === booking.userId) || (booking.userEmail && user.email === booking.userEmail) || (booking.user && user.name === booking.user));
+  const notification = {
+    id: 'booking-notification-' + booking.id + '-' + Date.now(),
+    title,
+    message,
+    target: 'Users',
+    courtId: booking.courtId || '',
+    targetUserId: booking.userId || (targetUser && targetUser.id) || '',
+    targetUserEmail: booking.userEmail || (targetUser && targetUser.email) || '',
+    userId: booking.userId || (targetUser && targetUser.id) || '',
+    date: new Date().toISOString(),
+    status: 'Sent',
+    type: 'booking'
+  };
+
+  if (this.demoMode || !window.FNAdminData.isLive()) {
+    this.state.notifications = [...(this.state.notifications || []), notification];
+    window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
+    return Promise.resolve(notification);
+  }
+
+  return window.FNAdminData.save('notifications', notification.id, notification).then(() => notification);
 };

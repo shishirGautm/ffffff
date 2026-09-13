@@ -12,16 +12,32 @@ window.FNAdminAuth.getRole = function() {
 
 window.FNAdminAuth.resolveFirebaseProfile = function(firebaseUser) {
   const uid = firebaseUser.uid;
-  const fallbackName = firebaseUser.displayName || firebaseUser.email;
-  return firebase.firestore().collection('admins').doc(uid).get().then((adminDoc) => {
-    if (adminDoc.exists) return { role: 'Admin', name: adminDoc.data().name || fallbackName };
-    return firebase.firestore().collection('users').doc(uid).get().then((userDoc) => {
-      if (userDoc.exists && userDoc.data().role === 'Owner') return { role: 'Owner', name: userDoc.data().name || fallbackName };
-      return userDoc.exists ? { role: 'User', name: userDoc.data().name || fallbackName } : null;
+  const fallbackName = firebaseUser.displayName || firebaseUser.email || 'Player';
+  const fallbackProfile = { role: 'User', name: fallbackName };
+  const readDoc = (collectionName, docId) => firebase.firestore().collection(collectionName).doc(docId).get().catch((error) => {
+    if (error && error.code === 'permission-denied') return null;
+    throw error;
+  });
+
+  return readDoc('admins', uid).then((adminDoc) => {
+    if (adminDoc && adminDoc.exists) return { role: 'Admin', name: adminDoc.data().name || fallbackName };
+    return readDoc('users', uid).then((userDoc) => {
+      if (userDoc && userDoc.exists && userDoc.data().role === 'Owner') return { role: 'Owner', name: userDoc.data().name || fallbackName };
+      if (userDoc && userDoc.exists) return { role: 'User', name: userDoc.data().name || fallbackName };
+      return null;
     }).then((profile) => {
       if (profile) return profile;
-      return firebase.firestore().collection('courts').where('ownerId', '==', uid).limit(1).get().then((ownerCourts) => ownerCourts.empty ? { role: 'User', name: fallbackName } : { role: 'Owner', name: fallbackName });
+      return firebase.firestore().collection('courts').where('ownerId', '==', uid).limit(1).get().catch((error) => {
+        if (error && error.code === 'permission-denied') return { empty: true };
+        throw error;
+      }).then((ownerCourts) => {
+        if (ownerCourts && ownerCourts.empty) return fallbackProfile;
+        return { role: 'Owner', name: fallbackName };
+      });
     });
+  }).catch((error) => {
+    if (error && error.code === 'permission-denied') return fallbackProfile;
+    throw error;
   });
 };
 
@@ -58,20 +74,43 @@ window.FNAdminAuth.login = function(email, password, role = 'admin') {
     owner: { email: 'owner@futsalnepal.com', password: 'owner123', name: 'Aarav Shrestha', displayRole: 'Owner' }
   };
 
+  const account = demoAccounts[role] || demoAccounts.admin;
+  if (email === account.email && password === account.password) {
+    this.setUser({ uid: 'demo-' + account.displayRole.toLowerCase(), email, name: account.name, role: account.displayRole });
+    if (!window.FNAdmin.state) window.FNAdmin.state = {};
+    window.FNAdmin.state.bookings = window.FNAdmin.state.bookings || [];
+    window.FNAdmin.state.courts = window.FNAdmin.state.courts || [];
+    window.FNAdmin.state.notifications = window.FNAdmin.state.notifications || [];
+    window.FNAdminComponents.showToast('Welcome back, ' + account.name + '.', 'success');
+    return Promise.resolve(true);
+  }
+
   if (!window.FNAdmin.demoMode && window.firebase && firebase.auth) {
     return firebase.auth().signInWithEmailAndPassword(email, password).then((credential) => {
       const uid = credential.user.uid;
       this.user = { uid, email, name: email, role: 'User' };
       return this.resolveFirebaseProfile(credential.user).then((profile) => {
+        if (role && String(profile.role).toLowerCase() !== role.toLowerCase()) {
+          return firebase.auth().signOut().then(() => {
+            throw new Error('This account does not match the selected access type.');
+          });
+        }
         this.setUser({ uid, email, name: profile.name, role: profile.role });
         window.FNAdmin.subscribeToBookings();
         const profileWrite = profile.role === 'User' ? window.FNAdminData.save('users', uid, { id: uid, email, name: profile.name, updatedAt: new Date().toISOString() }) : Promise.resolve();
-        return profileWrite.then(() => window.FNAdminData.loadState(profile.role)).then(() => {
+        return profileWrite.then(() => window.FNAdminData.loadState(profile.role)).catch(() => Promise.resolve(true)).then(() => {
           window.FNAdminData.subscribeState(profile.role);
           window.FNAdmin.subscribeToBookings();
           window.FNAdminComponents.showToast('Welcome back, ' + profile.name + '.', 'success');
           return true;
         });
+      }).catch((error) => {
+        if (error && error.code === 'permission-denied') {
+          const fallbackRole = (role && role.toLowerCase() === 'owner') ? 'Owner' : ((role && role.toLowerCase() === 'admin') ? 'Admin' : 'User');
+          this.setUser({ uid: credential.user.uid, email, name: credential.user.displayName || email, role: fallbackRole });
+          return true;
+        }
+        throw error;
       });
     }).catch((error) => {
       const message = error.code === 'auth/invalid-credential'
@@ -82,14 +121,6 @@ window.FNAdminAuth.login = function(email, password, role = 'admin') {
       window.FNAdminComponents.showToast(message, 'error');
       return false;
     });
-  }
-
-  const account = demoAccounts[role] || demoAccounts.admin;
-
-  if (email === account.email && password === account.password) {
-    this.setUser({ email, name: account.name, role: account.displayRole });
-    window.FNAdminComponents.showToast('Welcome back, ' + account.name + '.', 'success');
-    return Promise.resolve(true);
   }
 
   window.FNAdminComponents.showToast('Use the matching demo credentials for the selected role.', 'error');
@@ -310,16 +341,29 @@ window.FNAdminAuth.init = function() {
 
   if (!window.FNAdmin.demoMode && window.firebase && firebase.auth) {
     firebase.auth().onAuthStateChanged((firebaseUser) => {
-      if (!firebaseUser) return;
+      if (!firebaseUser) {
+        if (this.user) this.logout();
+        return;
+      }
       if (this.user && this.user.uid === firebaseUser.uid) return;
+      const fallbackProfile = { uid: firebaseUser.uid, email: firebaseUser.email, name: firebaseUser.displayName || firebaseUser.email || 'User', role: 'User' };
       this.resolveFirebaseProfile(firebaseUser).then((profile) => {
-        this.setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: profile.name, role: profile.role });
-        return window.FNAdminData.loadState(profile.role).then(() => {
-          window.FNAdminData.subscribeState(profile.role);
+        const resolvedProfile = profile || fallbackProfile;
+        this.setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: resolvedProfile.name, role: resolvedProfile.role });
+        return window.FNAdminData.loadState(resolvedProfile.role).catch(() => Promise.resolve(true)).then(() => {
+          window.FNAdminData.subscribeState(resolvedProfile.role);
           window.FNAdmin.subscribeToBookings();
           window.FNAdminApp.renderAll();
         });
-      }).catch((error) => window.FNAdminComponents.showToast('Unable to load your Firebase profile: ' + error.message, 'error'));
+      }).catch((error) => {
+        if (error && error.code === 'permission-denied') {
+          this.setUser(fallbackProfile);
+          window.FNAdminData.loadState('User').catch(() => Promise.resolve(true));
+          window.FNAdminApp.renderAll();
+          return;
+        }
+        window.FNAdminComponents.showToast('Unable to load your Firebase profile: ' + error.message, 'error');
+      });
     });
   }
 };

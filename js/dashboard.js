@@ -47,9 +47,7 @@ window.FNAdminDashboard.renderStats = function() {
 
 window.FNAdminDashboard.updateGreeting = function() {
   const greeting = document.getElementById('adminGreeting');
-  const now = new Date();
-  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
-  if (greeting) greeting.textContent = minutesSinceMidnight > 720 ? 'Good Morning' : 'Good Evening';
+  if (greeting) greeting.textContent = window.FNAdminComponents.getTimeGreeting();
 };
 
 window.FNAdminDashboard.setupCharts = function() {
@@ -132,14 +130,23 @@ window.FNAdminDashboard.setupCharts = function() {
 
   const popularCourtsList = document.getElementById('popularCourtsList');
   if (popularCourtsList) {
+    const courtLookup = new Map((window.FNAdmin.state.courts || []).map((court) => [String(court.id || court.name), court.name]));
     const courtTotals = bookings.reduce((totals, booking) => {
-      const name = booking.court || 'Unknown court';
-      if (!totals[name]) totals[name] = { name, bookings: 0, revenue: 0 };
-      totals[name].bookings += 1;
-      totals[name].revenue += Number(booking.amount || 0);
+      const courtId = booking.courtId || booking.court || 'unknown';
+      const resolvedName = courtLookup.get(String(courtId)) || booking.court || booking.courtName || 'Unknown court';
+      const key = resolvedName.trim() || 'Unknown court';
+      if (!totals[key]) totals[key] = { name: key, bookings: 0, revenue: 0 };
+      totals[key].bookings += 1;
+      totals[key].revenue += Number(booking.amount || 0);
       return totals;
     }, {});
+
     const items = Object.values(courtTotals).sort((first, second) => second.bookings - first.bookings).slice(0, 5);
+
+    if (!items.length) {
+      popularCourtsList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-futbol"></i><h3>No bookings yet</h3><p>Popular courts will appear here once bookings are created.</p></div>';
+      return;
+    }
 
     popularCourtsList.innerHTML = items.map((court, index) => `
       <div class="rank-item">
@@ -148,7 +155,7 @@ window.FNAdminDashboard.setupCharts = function() {
           <strong>${court.name}</strong>
           <small>${court.bookings} bookings</small>
         </div>
-          <strong>NPR ${court.revenue.toLocaleString()}</strong>
+        <strong>NPR ${court.revenue.toLocaleString()}</strong>
       </div>
     `).join('');
   }

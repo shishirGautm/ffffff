@@ -61,7 +61,13 @@
   .user-dashboard-banner { align-items: flex-start; flex-wrap: wrap; }
 
   .hero-card > div:first-child,
+  .hero-card__meta,
   .user-dashboard-banner > div:first-child { min-width: min(100%, 420px); }
+
+  .hero-card__meta {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
 
   .hero-actions,
   .user-dashboard-actions { width: 100%; }
@@ -109,9 +115,13 @@
   .form-actions > .btn { width: 100%; }
 
   .hero-card { padding: 18px; border-radius: 18px; }
-  .hero-card h2 { font-size: 1.4rem; }
+  .hero-card h2 { font-size: 1.45rem; }
+  .hero-subtitle { font-size: 0.9rem; }
+  .hero-card__meta { grid-template-columns: 1fr 1fr; min-width: 0; }
   .hero-actions { flex-direction: column; }
   .hero-actions .btn { width: 100%; }
+  .site-footer { flex-direction: column; padding-left: 14px; padding-right: 14px; }
+  .site-footer__links { grid-template-columns: 1fr; width: 100%; }
 
   .stats-grid,
   .analytics-grid,

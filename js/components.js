@@ -1,5 +1,10 @@
 window.FNAdminComponents = window.FNAdminComponents || {};
 
+window.FNAdminComponents.getTimeGreeting = function() {
+  const hour = new Date().getHours();
+  return hour >= 0 && hour < 12 ? 'Good morning' : 'Good evening';
+};
+
 window.FNAdminComponents.showToast = function(message, type) {
   const container = document.getElementById('toastContainer');
   if (!container) return;
@@ -22,6 +27,7 @@ window.FNAdminComponents.openModal = function(contentHtml) {
 window.FNAdminComponents.closeModal = function() {
   const modal = document.getElementById('genericModal');
   if (!modal) return;
+  if (document.activeElement && modal.contains(document.activeElement)) document.activeElement.blur();
   modal.classList.add('hidden');
   modal.setAttribute('aria-hidden', 'true');
 };

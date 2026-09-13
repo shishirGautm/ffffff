@@ -1,7 +1,12 @@
 window.FNAdminNotifications = window.FNAdminNotifications || {};
 
+window.FNAdminNotifications.getVisibleNotifications = function() {
+  const expiryLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
+  return (window.FNAdmin.state.notifications || []).filter((item) => new Date(item.date || 0).getTime() >= expiryLimit && (item.type !== 'booking' || item.target === 'Staff'));
+};
+
 window.FNAdminNotifications.getRows = function() {
-  return window.FNAdmin.state.notifications.map((item) => [
+  return this.getVisibleNotifications().map((item) => [
     item.title,
     item.message,
     item.target,
@@ -25,7 +30,7 @@ window.FNAdminNotifications.renderBell = function() {
   const count = document.getElementById('adminNotificationCount');
   const preview = document.getElementById('adminNotificationPreview');
   if (!badge || !count || !preview) return;
-  const notifications = (window.FNAdmin.state.notifications || []).slice().sort((first, second) => String(second.date || '').localeCompare(String(first.date || '')));
+  const notifications = this.getVisibleNotifications().slice().sort((first, second) => String(second.date || '').localeCompare(String(first.date || '')));
   badge.textContent = notifications.length > 99 ? '99+' : String(notifications.length);
   count.textContent = notifications.length + ' new';
   preview.innerHTML = notifications.length ? notifications.slice(0, 5).map((item) => '<article class="notification-preview-item"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="notification-empty">No notifications yet.</p>';
@@ -88,5 +93,6 @@ window.FNAdminNotifications.init = function() {
   const button = document.getElementById('addNotificationBtn');
   if (button) button.addEventListener('click', () => this.openForm());
   this.initBell();
+  window.FNAdmin.cleanupExpiredNotifications().catch((error) => console.error('Unable to remove expired notifications:', error));
   this.render();
 };
