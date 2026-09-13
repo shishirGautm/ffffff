@@ -34,7 +34,7 @@
         <form id="authLoginForm" autocomplete="off">
           <input type="hidden" id="authLoginRole" value="admin" />
           <label>
-            Email
+            Email or phone number
             <input type="email" id="authLoginEmail" value="" autocomplete="off" required />
           </label>
           <label>
@@ -42,8 +42,6 @@
             <input type="password" id="authLoginPassword" value="" autocomplete="new-password" required />
           </label>
           <button class="btn btn-primary full-width" type="submit">Login</button>
-          <div class="auth-divider"><span>or</span></div>
-          <button class="btn btn-google full-width" id="googleLoginBtn" type="button"><i class="fa-brands fa-google"></i> Continue with Google</button>
         </form>
 
         <button class="auth-link" id="showRegisterBtn" type="button">Create an account</button>
@@ -54,12 +52,10 @@
             <p class="muted">Register as a player or Ground owner.</p>
           </div>
           <label>Full name<input type="text" id="registerName" autocomplete="off" required /></label>
-          <label>Email<input type="email" id="registerEmail" autocomplete="off" required /></label>
+          <label>Email or phone number<input type="email" id="registerEmail" autocomplete="off" required /></label>
           <label>Password<input type="password" id="registerPassword" autocomplete="new-password" minlength="6" required /></label>
           <label>Account type<select id="registerRole"><option value="User">Player / User</option><option value="Owner">Court Owner</option></select></label>
           <button class="btn btn-primary full-width" type="submit">Create account</button>
-          <div class="auth-divider"><span>or</span></div>
-          <button class="btn btn-google full-width" id="googleRegisterBtn" type="button"><i class="fa-brands fa-google"></i> Continue with Google</button>
           <button class="auth-link" id="showLoginBtn" type="button">Back to login</button>
         </form>
 
@@ -207,7 +203,22 @@
           <h2>Owner Portal</h2>
           <p class="muted">Manage your court availability, pricing and bookings.</p>
         </div>
-        <button class="btn btn-secondary" id="ownerLogoutBtn">Logout</button>
+        <div class="owner-header-actions">
+            <button class="owner-header-action" id="ownerBookingRequestsBtn" type="button" aria-label="View booking requests" title="Booking requests">
+            <i class="fa-regular fa-calendar-check"></i><span>Booking requests</span><strong id="ownerBookingRequestsCount">0</strong>
+          </button>
+          <div class="owner-notification-menu">
+            <button class="owner-header-action" id="ownerNotificationsBtn" type="button" aria-label="View notifications" title="Notifications" aria-expanded="false">
+              <i class="fa-solid fa-bell"></i><span>Notifications</span><strong id="ownerNotificationsCount">0</strong>
+            </button>
+            <div class="owner-notification-dropdown is-hidden" id="ownerNotificationDropdown">
+              <div class="owner-notification-dropdown__header"><strong>Notifications</strong><span id="ownerNotificationSummary">0 updates</span></div>
+              <div id="ownerNotificationPreview" class="owner-notification-dropdown__list"></div>
+              <button type="button" class="owner-notification-dropdown__footer" id="viewOwnerNotificationsBtn">View all notifications</button>
+            </div>
+          </div>
+          <button class="btn btn-secondary" id="ownerLogoutBtn" type="button">Logout</button>
+        </div>
       </header>
       <section class="user-panel owner-profile-panel" id="ownerProfilePanel">
         <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Ground owner profile</h3></div></div>
@@ -216,9 +227,14 @@
           <div id="ownerProfileDetails" class="owner-profile-details"></div>
         </div>
       </section>
+      <section class="owner-summary-grid" id="ownerDashboardSummary"></section>
+      <section class="user-panel owner-period-panel">
+        <div class="panel__header"><div><p class="eyebrow text-green">Performance</p><h3>Booking statistics</h3></div></div>
+        <div id="ownerPeriodStats" class="owner-period-stats"></div>
+      </section>
       <div id="ownerCourtPanel" class="owner-portal-grid"></div>
-      <section class="user-panel">
-        <div class="panel__header"><div><p class="eyebrow text-green">Reservations</p><h3>Bookings for your courts</h3></div></div>
+      <section class="user-panel owner-reservations-panel" id="ownerReservationsPanel">
+        <div class="panel__header owner-reservations-heading"><div><p class="eyebrow text-green">Reservations</p><h3>Bookings for your courts</h3></div></div>
         <div id="ownerBookingsList" class="owner-bookings-list"></div>
       </section>
       <section class="user-panel user-notifications-panel">
@@ -568,7 +584,7 @@
     <script src="js/firebase-config.js?v=20260913-7"></script>
     <script src="js/firebase-data.js?v=20260913-3"></script>
     <script src="js/components.js"></script>
-    <script src="js/auth.js?v=20260913-4"></script>
+    <script src="js/auth.js?v=20260913-7"></script>
     <script src="js/user-portal.js?v=20260913-13"></script>
     <script src="js/owner-portal.js?v=20260913-9"></script>
     <script src="js/dashboard.js?v=20260912-4"></script>

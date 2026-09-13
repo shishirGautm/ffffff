@@ -28,8 +28,9 @@ service cloud.firestore {
 
     match /courts/{courtId} {
       allow read: if isAuthenticated();
-      allow create, delete: if isStaff();
-      allow update: if isStaff() || (ownsCourt(courtId) && request.resource.data.ownerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'images', 'address', 'city', 'district', 'province', 'contactNumber', 'pricePerHour', 'type', 'turfType', 'status', 'openingTime', 'closingTime', 'description', 'ownerId']));
+      allow create: if isStaff() || (isAuthenticated() && request.resource.data.ownerId == request.auth.uid);
+      allow delete: if isStaff();
+      allow update: if isStaff() || (ownsCourt(courtId) && request.resource.data.ownerId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'images', 'address', 'city', 'district', 'province', 'contactNumber', 'pricePerHour', 'type', 'turfType', 'status', 'openingTime', 'closingTime', 'description', 'ownerId', 'slotDuration', 'blockedSlots']));
     }
 
     match /bookings/{bookingId} {

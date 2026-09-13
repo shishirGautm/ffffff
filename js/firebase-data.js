@@ -21,7 +21,7 @@ window.FNAdminData.loadState = function(role) {
   const allowedCollections = role === 'Admin'
     ? this.collections
     : role === 'Owner'
-      ? ['courts', 'notifications']
+      ? ['courts', 'bookings', 'notifications']
       : ['courts', 'users', 'teams', 'matches', 'tournaments', 'reviews', 'notifications'];
 
   return Promise.all(allowedCollections.map((name) => this.getCollection(name).get().then((snapshot) => {
@@ -46,7 +46,7 @@ window.FNAdminData.subscribeState = function(role) {
   if (!this.isLive()) return;
   this.unsubscribers.forEach((unsubscribe) => unsubscribe());
   this.unsubscribers = [];
-  const allowedCollections = role === 'Admin' ? this.collections : role === 'User' ? ['courts', 'users', 'teams', 'matches', 'tournaments', 'reviews', 'notifications'] : ['courts', 'notifications'];
+  const allowedCollections = role === 'Admin' ? this.collections : role === 'User' ? ['courts', 'users', 'teams', 'matches', 'tournaments', 'reviews', 'notifications'] : ['courts', 'bookings', 'notifications'];
   allowedCollections.forEach((name) => {
     const unsubscribe = this.getCollection(name).onSnapshot((snapshot) => {
       window.FNAdmin.state[name] = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));

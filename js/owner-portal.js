@@ -9,7 +9,12 @@ window.FNOwnerPortal.renderNotifications = function() {
   const list = document.getElementById('ownerNotificationsList');
   if (!list) return;
   const notifications = (window.FNAdmin.state.notifications || []).filter((item) => ['All', 'Owners'].includes(item.target));
-  list.innerHTML = notifications.length ? notifications.map((item) => '<article class="user-notification"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="muted">No new notifications.</p>';
+  const notificationMarkup = notifications.length ? notifications.map((item) => '<article class="user-notification"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="muted">No new notifications.</p>';
+  list.innerHTML = notificationMarkup;
+  const preview = document.getElementById('ownerNotificationPreview');
+  const summary = document.getElementById('ownerNotificationSummary');
+  if (preview) preview.innerHTML = notifications.length ? notifications.slice(0, 5).map((item) => '<article class="owner-notification-preview-item"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="owner-notification-empty">No notifications yet.</p>';
+  if (summary) summary.textContent = notifications.length + ' updates';
 };
 
 window.FNOwnerPortal.renderProfile = function(courts) {
@@ -25,17 +30,106 @@ window.FNOwnerPortal.renderProfile = function(courts) {
     '<div><span>Assigned courts</span><strong>' + courts.length + '</strong></div>';
 };
 
+window.FNOwnerPortal.getBookings = function(courts) {
+  const courtIds = courts.map((court) => court.id);
+  const courtNames = courts.map((court) => court.name);
+  return (window.FNAdmin.state.bookings || []).filter((booking) => courtIds.includes(booking.courtId) || courtNames.includes(booking.court));
+};
+
+window.FNOwnerPortal.renderHeaderActions = function(bookings) {
+  const pendingCount = bookings.filter((booking) => String(booking.bookingStatus || '').toLowerCase() === 'pending').length;
+  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => ['All', 'Owners'].includes(item.target));
+  const bookingCount = document.getElementById('ownerBookingRequestsCount');
+  const notificationCount = document.getElementById('ownerNotificationsCount');
+  if (bookingCount) bookingCount.textContent = pendingCount > 99 ? '99+' : String(pendingCount);
+  if (notificationCount) notificationCount.textContent = notifications.length > 99 ? '99+' : String(notifications.length);
+};
+
+window.FNOwnerPortal.initHeaderActions = function() {
+  const actions = [
+    ['ownerBookingRequestsBtn', 'ownerReservationsPanel'],
+    ['ownerNotificationsBtn', 'ownerNotificationsList']
+  ];
+  actions.forEach(([buttonId, targetId]) => {
+    const button = document.getElementById(buttonId);
+    if (!button || button.dataset.bound === 'true') return;
+    button.dataset.bound = 'true';
+    button.addEventListener('click', () => document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  });
+  const notificationButton = document.getElementById('ownerNotificationsBtn');
+  const notificationDropdown = document.getElementById('ownerNotificationDropdown');
+  const viewAll = document.getElementById('viewOwnerNotificationsBtn');
+  if (notificationButton && notificationDropdown && notificationButton.dataset.dropdownBound !== 'true') {
+    notificationButton.dataset.dropdownBound = 'true';
+    notificationButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const isHidden = notificationDropdown.classList.toggle('is-hidden');
+      notificationButton.setAttribute('aria-expanded', String(!isHidden));
+    });
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.owner-notification-menu')) {
+        notificationDropdown.classList.add('is-hidden');
+        notificationButton.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+  if (viewAll && viewAll.dataset.bound !== 'true') {
+    viewAll.dataset.bound = 'true';
+    viewAll.addEventListener('click', () => document.getElementById('ownerNotificationsList')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+};
+
+window.FNOwnerPortal.renderSummary = function(courts, bookings) {
+  const holder = document.getElementById('ownerDashboardSummary');
+  if (!holder) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const active = (booking) => !['cancelled', 'rejected'].includes(String(booking.bookingStatus || '').toLowerCase());
+  const todayBookings = bookings.filter((booking) => booking.date === today && active(booking));
+  const upcoming = bookings.filter((booking) => booking.date >= today && active(booking));
+  const revenue = todayBookings.reduce((sum, booking) => sum + Number(booking.amount || 0), 0);
+  const blockedToday = courts.reduce((sum, court) => sum + (court.blockedSlots || []).filter((slot) => slot.indexOf(today + ' | ') === 0).length, 0);
+  const totalSlots = courts.reduce((sum, court) => {
+    const start = Number(String(court.openingTime || '08:00').split(':')[0]) * 60 + Number(String(court.openingTime || '08:00').split(':')[1] || 0);
+    const end = Number(String(court.closingTime || '22:00').split(':')[0]) * 60 + Number(String(court.closingTime || '22:00').split(':')[1] || 0);
+    return sum + Math.max(0, Math.floor((end - start) / Number(court.slotDuration || 90)));
+  }, 0);
+  const stats = [
+    ['Today\'s bookings', todayBookings.length.toLocaleString(), 'fa-regular fa-calendar-check'],
+    ['Today\'s revenue', 'NPR ' + revenue.toLocaleString(), 'fa-solid fa-wallet'],
+    ['Available slots', Math.max(0, totalSlots - todayBookings.length - blockedToday).toLocaleString(), 'fa-regular fa-clock'],
+    ['Upcoming bookings', upcoming.length.toLocaleString(), 'fa-solid fa-arrow-trend-up']
+  ];
+  holder.innerHTML = stats.map((stat) => '<article class="owner-summary-card"><i class="' + stat[2] + '"></i><span>' + stat[0] + '</span><strong>' + stat[1] + '</strong></article>').join('');
+  const periodHolder = document.getElementById('ownerPeriodStats');
+  if (periodHolder) {
+    const now = new Date(today + 'T00:00:00');
+    const countInPeriod = (days) => bookings.filter((booking) => {
+      const date = new Date(String(booking.date || '') + 'T00:00:00');
+      return active(booking) && !Number.isNaN(date.valueOf()) && date >= new Date(now.valueOf() - (days - 1) * 86400000) && date <= now;
+    }).length;
+    periodHolder.innerHTML = [['Daily', 1], ['Weekly', 7], ['Monthly', 30]].map((period) => '<div><span>' + period[0] + '</span><strong>' + countInPeriod(period[1]).toLocaleString() + '</strong><small>bookings</small></div>').join('');
+  }
+};
+
 window.FNOwnerPortal.render = function() {
   const panel = document.getElementById('ownerCourtPanel');
   const bookingsList = document.getElementById('ownerBookingsList');
   if (!panel || !bookingsList) return;
   const ownerSection = document.getElementById('ownerSection');
+  const ownerReservationsPanel = document.getElementById('ownerReservationsPanel');
   const ownerNotificationsPanel = ownerSection && ownerSection.querySelector('.user-notifications-panel');
-  if (ownerSection && ownerNotificationsPanel && panel) ownerSection.insertBefore(ownerNotificationsPanel, panel);
+  if (ownerSection && panel && ownerReservationsPanel) {
+    ownerSection.insertBefore(ownerReservationsPanel, panel.nextSibling);
+    if (ownerNotificationsPanel) ownerSection.appendChild(ownerNotificationsPanel);
+  }
   this.renderNotifications();
 
   const courts = this.getCourts();
+  const bookings = this.getBookings(courts);
+  this.renderHeaderActions(bookings);
+  this.initHeaderActions();
   this.renderProfile(courts);
+  this.renderSummary(courts, bookings);
   if (!courts.length) {
     panel.innerHTML = '<section class="user-panel"><div class="empty-state"><i class="fa-solid fa-futbol"></i><h3>No courts assigned</h3><p>Ask an administrator to assign a court to your owner account.</p></div></section>';
     bookingsList.innerHTML = '<p class="muted">No bookings available.</p>';
@@ -57,10 +151,7 @@ window.FNOwnerPortal.render = function() {
     document.querySelectorAll('[data-close-modal="true"]').forEach((closeButton) => closeButton.addEventListener('click', window.FNAdminComponents.closeModal));
   }));
 
-  const courtIds = courts.map((court) => court.id);
-  const courtNames = courts.map((court) => court.name);
-  const bookings = (window.FNAdmin.state.bookings || []).filter((booking) => courtIds.includes(booking.courtId) || courtNames.includes(booking.court));
-  bookingsList.innerHTML = bookings.length ? bookings.map((booking) => '<div class="owner-booking-row"><div><strong>' + booking.court + ' • ' + booking.user + '</strong><small>' + booking.date + ' • ' + booking.startTime + ' - ' + booking.endTime + ' • ' + booking.paymentMethod + ' (' + booking.paymentStatus + ')</small></div><div class="owner-booking-actions">' + window.FNAdminComponents.getStatusBadge(booking.bookingStatus) + (booking.bookingStatus === 'Pending' ? '<button type="button" data-owner-booking-action="confirm" data-booking-id="' + booking.id + '">Confirm</button>' : '') + (booking.bookingStatus === 'Cancelled' ? '<button class="icon-button danger" type="button" data-owner-booking-action="delete" data-booking-id="' + booking.id + '" title="Delete cancelled reservation" aria-label="Delete cancelled reservation"><i class="fa-solid fa-trash"></i></button>' : (!['Rejected', 'Completed'].includes(booking.bookingStatus) ? '<button class="icon-button danger" type="button" data-owner-booking-action="cancel" data-booking-id="' + booking.id + '" title="Cancel reservation" aria-label="Cancel reservation"><i class="fa-solid fa-trash"></i></button>' : '')) + '</div></div>').join('') : '<p class="muted">No bookings for your courts yet.</p>';
+  bookingsList.innerHTML = bookings.length ? bookings.sort((first, second) => (first.date + first.startTime).localeCompare(second.date + second.startTime)).map((booking) => '<div class="owner-booking-row"><div><strong>' + booking.court + ' • ' + booking.user + '</strong><small>' + booking.date + ' • ' + booking.startTime + ' - ' + booking.endTime + ' • ' + booking.phone + ' • ' + booking.paymentMethod + ' (' + booking.paymentStatus + ')</small></div><div class="owner-booking-actions">' + window.FNAdminComponents.getStatusBadge(booking.bookingStatus) + (booking.bookingStatus === 'Pending' ? '<button type="button" data-owner-booking-action="confirm" data-booking-id="' + booking.id + '">Confirm</button><button type="button" data-owner-booking-action="reject" data-booking-id="' + booking.id + '">Reject</button>' : '') + (booking.bookingStatus === 'Cancelled' ? '<button class="icon-button danger" type="button" data-owner-booking-action="delete" data-booking-id="' + booking.id + '" title="Delete cancelled reservation" aria-label="Delete cancelled reservation"><i class="fa-solid fa-trash"></i></button>' : (!['Rejected', 'Completed'].includes(booking.bookingStatus) ? '<button class="icon-button danger" type="button" data-owner-booking-action="cancel" data-booking-id="' + booking.id + '" title="Delete reservation" aria-label="Delete reservation"><i class="fa-solid fa-trash"></i></button>' : '')) + '</div></div>').join('') : '<p class="muted">No bookings for your courts yet.</p>';
 
   panel.querySelectorAll('.owner-court-form').forEach((form) => form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -141,6 +232,14 @@ window.FNOwnerPortal.render = function() {
       });
       return;
     }
+    if (button.dataset.ownerBookingAction === 'reject') {
+      booking.bookingStatus = 'Rejected';
+      window.FNAdmin.syncBookings(booking).then(() => {
+        this.render();
+        window.FNAdminComponents.showToast('Booking rejected.', 'success');
+      }).catch((error) => window.FNAdminComponents.showToast('Booking could not be rejected: ' + (error.message || 'permission denied.'), 'error'));
+      return;
+    }
     if (window.FNAdmin.hasBookingConflict(booking, booking.id)) {
       booking.bookingStatus = 'Rejected';
       window.FNAdmin.syncBookings(booking).then(() => {
@@ -164,6 +263,7 @@ window.FNOwnerPortal.render = function() {
 };
 
 window.FNOwnerPortal.init = function() {
+  this.initHeaderActions();
   window.addEventListener('fn:bookings-changed', () => {
     if (window.FNAdminAuth.getRole() === 'Owner') this.render();
   });

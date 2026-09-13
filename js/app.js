@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const collection = event.detail && event.detail.collection;
     if (window.FNAdminAuth.getRole() === 'Admin') window.FNAdminApp.renderAll();
     if (window.FNAdminAuth.getRole() === 'User' && ['courts', 'notifications'].includes(collection) && window.FNUserPortal) window.FNUserPortal.init();
-    if (window.FNAdminAuth.getRole() === 'Owner' && ['courts', 'notifications'].includes(collection) && window.FNOwnerPortal) window.FNOwnerPortal.render();
+    if (window.FNAdminAuth.getRole() === 'Owner' && ['courts', 'bookings', 'notifications'].includes(collection) && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
   window.addEventListener('fn:collection-error', (event) => window.FNAdminComponents.showToast('Unable to load live ' + event.detail.collection + ' data.', 'error'));
   window.addEventListener('fn:courts-changed', function() {

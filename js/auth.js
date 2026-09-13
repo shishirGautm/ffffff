@@ -224,11 +224,7 @@ window.FNAdminAuth.init = function() {
       const email = document.getElementById('authLoginEmail').value.trim();
       const password = document.getElementById('authLoginPassword').value.trim();
       const role = hiddenRoleInput ? hiddenRoleInput.value : 'admin';
-      window.FNAdminAuth.login(email, password, role).then((result) => {
-        if (result) {
-          window.FNAdminApp.renderAll();
-        }
-      });
+      window.FNAdminAuth.login(email, password, role).then((result) => { if (result) window.FNAdminApp.renderAll(); });
     });
   }
 
