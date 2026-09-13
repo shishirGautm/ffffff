@@ -28,18 +28,18 @@
         <div class="access-toggle">
           <button class="access-btn active" data-role="admin" type="button">Admin</button>
           <button class="access-btn" data-role="user" type="button">User</button>
-          <button class="access-btn" data-role="owner" type="button">Court owner</button>
+          <button class="access-btn" data-role="owner" type="button">Ground owner</button>
         </div>
 
-        <form id="authLoginForm">
+        <form id="authLoginForm" autocomplete="off">
           <input type="hidden" id="authLoginRole" value="admin" />
           <label>
             Email
-            <input type="email" id="authLoginEmail" value="" required />
+            <input type="email" id="authLoginEmail" value="" autocomplete="off" required />
           </label>
           <label>
             Password
-            <input type="password" id="authLoginPassword" value="" required />
+            <input type="password" id="authLoginPassword" value="" autocomplete="new-password" required />
           </label>
           <button class="btn btn-primary full-width" type="submit">Login</button>
           <div class="auth-divider"><span>or</span></div>
@@ -48,14 +48,14 @@
 
         <button class="auth-link" id="showRegisterBtn" type="button">Create an account</button>
 
-        <form id="registerForm" class="hidden" hidden>
+        <form id="registerForm" class="hidden" hidden autocomplete="off">
           <div class="auth-form-heading">
             <h3>Create your account</h3>
-            <p class="muted">Register as a player or court owner.</p>
+            <p class="muted">Register as a player or Ground owner.</p>
           </div>
-          <label>Full name<input type="text" id="registerName" required /></label>
-          <label>Email<input type="email" id="registerEmail" required /></label>
-          <label>Password<input type="password" id="registerPassword" minlength="6" required /></label>
+          <label>Full name<input type="text" id="registerName" autocomplete="off" required /></label>
+          <label>Email<input type="email" id="registerEmail" autocomplete="off" required /></label>
+          <label>Password<input type="password" id="registerPassword" autocomplete="new-password" minlength="6" required /></label>
           <label>Account type<select id="registerRole"><option value="User">Player / User</option><option value="Owner">Court Owner</option></select></label>
           <button class="btn btn-primary full-width" type="submit">Create account</button>
           <div class="auth-divider"><span>or</span></div>
@@ -210,7 +210,7 @@
         <button class="btn btn-secondary" id="ownerLogoutBtn">Logout</button>
       </header>
       <section class="user-panel owner-profile-panel" id="ownerProfilePanel">
-        <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Court owner profile</h3></div></div>
+        <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Ground owner profile</h3></div></div>
         <div class="owner-profile-content">
           <div id="ownerProfileIdentity" class="owner-profile-identity"></div>
           <div id="ownerProfileDetails" class="owner-profile-details"></div>
@@ -383,7 +383,7 @@
                 <p class="eyebrow">Operations</p>
                 <h2>Courts</h2>
               </div>
-              <button class="btn btn-primary" id="addCourtBtn"><i class="fa-solid fa-plus"></i> Add Court</button>
+              <button class="btn btn-primary" id="addCourtBtn"><i class="fa-solid fa-plus"></i> Add Ground</button>
             </div>
             <div class="table-controls">
               <div class="search-box compact"><i class="fa-solid fa-magnifying-glass"></i><input id="courtSearch" type="search" placeholder="Search courts" /></div>
@@ -544,14 +544,14 @@
         <div class="brand-badge">FUTSAL NEPAL</div>
         <h2>Admin Login</h2>
         <p class="muted">Sign in to manage courts, bookings and memberships.</p>
-        <form id="loginForm">
+        <form id="loginForm" autocomplete="off">
           <label>
             Email
-            <input type="email" id="loginEmail" value="admin@futsalnepal.com" required />
+            <input type="email" id="loginEmail" value="" autocomplete="off" required />
           </label>
           <label>
             Password
-            <input type="password" id="loginPassword" value="admin123" required />
+            <input type="password" id="loginPassword" value="" autocomplete="new-password" required />
           </label>
           <button class="btn btn-primary full-width" type="submit">Login</button>
         </form>
@@ -568,7 +568,7 @@
     <script src="js/firebase-config.js?v=20260913-7"></script>
     <script src="js/firebase-data.js?v=20260913-3"></script>
     <script src="js/components.js"></script>
-    <script src="js/auth.js?v=20260912-3"></script>
+    <script src="js/auth.js?v=20260913-4"></script>
     <script src="js/user-portal.js?v=20260913-13"></script>
     <script src="js/owner-portal.js?v=20260913-9"></script>
     <script src="js/dashboard.js?v=20260912-4"></script>

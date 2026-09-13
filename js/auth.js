@@ -201,6 +201,10 @@ window.FNAdminAuth.logout = function() {
 
 window.FNAdminAuth.init = function() {
   const authLoginForm = document.getElementById('authLoginForm');
+  const authLoginEmail = document.getElementById('authLoginEmail');
+  const authLoginPassword = document.getElementById('authLoginPassword');
+  if (authLoginEmail) authLoginEmail.value = '';
+  if (authLoginPassword) authLoginPassword.value = '';
 
   const accessButtons = document.querySelectorAll('.access-btn');
   const hiddenRoleInput = document.getElementById('authLoginRole');
@@ -209,8 +213,6 @@ window.FNAdminAuth.init = function() {
       button.addEventListener('click', function() {
         const role = this.getAttribute('data-role');
         hiddenRoleInput.value = role;
-        document.getElementById('authLoginEmail').value = role === 'user' ? 'user@futsalnepal.com' : role === 'owner' ? 'owner@futsalnepal.com' : 'admin@futsalnepal.com';
-        document.getElementById('authLoginPassword').value = role === 'user' ? 'user123' : role === 'owner' ? 'owner123' : 'admin123';
         accessButtons.forEach((btn) => btn.classList.toggle('active', btn === this));
       });
     });
