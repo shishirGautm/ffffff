@@ -92,6 +92,9 @@
             <button type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-futbol"></i><span>Find a futsal</span></button>
             <button type="button" data-user-scroll="userTeamCount"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
             <button type="button" data-user-scroll="userNotificationsPanel"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
+            <button type="button" data-user-scroll="userTournamentsPanel"><i class="fa-solid fa-trophy"></i><span>Tournaments</span></button>
+            <button type="button" data-user-scroll="userMyTournamentsPanel"><i class="fa-solid fa-list-check"></i><span>My tournaments</span></button>
+            <button type="button" data-user-action="close-nav"><i class="fa-solid fa-xmark"></i><span>Exit menu</span></button>
           </nav>
           <div class="user-sidebar-note"><i class="fa-solid fa-circle-check"></i><span>Book your next match in a few clicks.</span></div>
         </aside>
@@ -103,6 +106,8 @@
             <button type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-futbol"></i><span>Find a futsal</span></button>
             <button type="button" data-user-scroll="userTeamCount"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
             <button type="button" data-user-scroll="userNotificationsPanel"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
+            <button type="button" data-user-scroll="userTournamentsPanel"><i class="fa-solid fa-trophy"></i><span>Tournaments</span></button>
+            <button type="button" data-user-scroll="userMyTournamentsPanel"><i class="fa-solid fa-list-check"></i><span>My tournaments</span></button>
           </nav>
           <header class="user-header">
         <button class="user-mobile-menu" id="userMobileMenuBtn" type="button" aria-label="Open navigation" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
@@ -177,6 +182,7 @@
             <div class="court-location" id="userCourtLocation"><span><span id="userCourtAddress">Select a futsal to see its location.</span><strong id="userCourtAvailability" class="court-availability"></strong></span><a id="userCourtMapLink" class="map-link hidden" href="#" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open map</a></div>
             <label>Date<input id="userBookingDate" type="date" required /></label>
             <label>Time slot<select id="userBookingTime" required></select></label>
+            <div class="slot-availability-legend" aria-label="Slot availability legend"><span><i class="fa-solid fa-circle available"></i> Available</span><span><i class="fa-solid fa-circle pending"></i> Pending</span><span><i class="fa-solid fa-circle booked"></i> Booked</span></div>
             <label>Phone<input id="userBookingPhone" type="tel" placeholder="+977-98XXXXXXXX" required /></label>
             <label>Payment method<select id="userBookingPayment" required><option value="eSewa">eSewa</option><option value="Khalti">Khalti</option><option value="ConnectIPS">ConnectIPS</option><option value="Cash">Cash at venue</option></select></label>
             <div class="booking-total"><span>Estimated total</span><strong id="userBookingAmount">NPR 0</strong></div>
@@ -205,6 +211,26 @@
         </div>
         <div id="userCourtDirectory" class="user-court-directory"></div>
           </section>
+          <section class="user-panel user-tournaments-panel" id="userTournamentsPanel">
+            <div class="panel__header">
+              <div>
+                <p class="eyebrow text-green">Community events</p>
+                <h3>Participate in futsal tournaments</h3>
+              </div>
+            </div>
+            <div id="userTournamentsList" class="user-tournaments-list"></div>
+          </section>
+
+          <section class="user-panel user-my-tournaments-panel" id="userMyTournamentsPanel">
+            <div class="panel__header">
+              <div>
+                <p class="eyebrow text-green">Your registrations</p>
+                <h3>My tournaments</h3>
+              </div>
+            </div>
+            <div id="userMyTournamentsList" class="user-my-tournaments-list"></div>
+          </section>
+
           <section class="user-panel user-notifications-panel" id="userNotificationsPanel">
             <div class="panel__header"><div><p class="eyebrow text-green">Updates</p><h3>Notifications</h3></div></div>
             <div id="userNotificationsList" class="user-notifications-list"></div>
@@ -488,7 +514,16 @@
                 <p class="eyebrow">Events</p>
                 <h2>Tournaments</h2>
               </div>
-              <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Create Tournament</button>
+              <button class="btn btn-primary" id="addTournamentBtn" type="button"><i class="fa-solid fa-plus"></i> Create Tournament</button>
+            </div>
+            <div class="table-controls">
+              <div class="search-box compact"><i class="fa-solid fa-magnifying-glass"></i><input id="tournamentSearch" type="search" placeholder="Search tournaments" /></div>
+              <select id="tournamentStatusFilter">
+                <option value="all">All status</option>
+                <option value="Open">Open</option>
+                <option value="Closed">Closed</option>
+                <option value="Draft">Draft</option>
+              </select>
             </div>
             <div id="tournamentsTableContainer" class="data-card table-card"></div>
           </section>
@@ -654,8 +689,8 @@
     <script src="js/firebase-data.js?v=20260913-4"></script>
     <script src="js/components.js"></script>
     <script src="js/auth.js?v=20260913-7"></script>
-    <script src="js/user-portal.js?v=20260913-17"></script>
-    <script src="js/owner-portal.js?v=20260913-13"></script>
+    <script src="js/user-portal.js?v=20260914-1"></script>
+    <script src="js/owner-portal.js?v=20260914-1"></script>
     <script src="js/dashboard.js?v=20260912-4"></script>
     <script src="js/courts.js?v=20260913-4"></script>
     <script src="js/bookings.js?v=20260913-4"></script>

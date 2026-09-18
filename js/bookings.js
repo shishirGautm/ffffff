@@ -18,8 +18,9 @@ window.FNAdminBookings.getRows = function(searchTerm, statusFilter) {
     window.FNAdminComponents.getStatusBadge(booking.bookingStatus),
     '<div class="action-group"><button class="icon-button" data-booking-action="view" data-booking-id="' + booking.id + '" title="View"><i class="fa-solid fa-eye"></i></button>' +
     (booking.bookingStatus === 'Pending' ? '<button class="icon-button" data-booking-action="confirm" data-booking-id="' + booking.id + '" title="Confirm booking"><i class="fa-solid fa-check"></i></button>' : '') +
+    (booking.bookingStatus === 'Pending' ? '<button class="icon-button danger" data-booking-action="reject" data-booking-id="' + booking.id + '" title="Reject booking"><i class="fa-solid fa-ban"></i></button>' : '') +
     (booking.bookingStatus !== 'Cancelled' && booking.paymentStatus !== 'Paid' ? '<button class="icon-button" data-booking-action="verify-payment" data-booking-id="' + booking.id + '" title="Verify payment"><i class="fa-solid fa-receipt"></i></button>' : '') +
-    (booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Completed' ? '<button class="icon-button danger" data-booking-action="cancel" data-booking-id="' + booking.id + '" title="Cancel booking"><i class="fa-solid fa-xmark"></i></button>' : '') +
+    (['Pending', 'Confirmed'].includes(booking.bookingStatus) ? '<button class="icon-button danger" data-booking-action="cancel" data-booking-id="' + booking.id + '" title="Cancel booking"><i class="fa-solid fa-xmark"></i></button>' : '') +
     '<button class="icon-button danger" data-booking-action="delete" data-booking-id="' + booking.id + '" title="Delete booking"><i class="fa-solid fa-trash"></i></button></div>'
   ]);
 };
@@ -32,11 +33,14 @@ window.FNAdminBookings.render = function() {
   window.FNAdminComponents.renderTable({ headers, rows, targetId: 'bookingsTableContainer', emptyMessage: 'No bookings match the current filter.' });
   const target = document.getElementById('bookingsTableContainer');
   if (target) {
-    target.querySelectorAll('[data-booking-action]').forEach((button) => button.addEventListener('click', () => this.handleAction(button.dataset.bookingAction, button.dataset.bookingId)));
+    target.querySelectorAll('[data-booking-action]').forEach((button) => button.addEventListener('click', () => {
+      if (button.dataset.bookingAction === 'confirm' && button.disabled) return;
+      this.handleAction(button.dataset.bookingAction, button.dataset.bookingId, button);
+    }));
   }
 };
 
-window.FNAdminBookings.handleAction = function(action, bookingId) {
+window.FNAdminBookings.handleAction = function(action, bookingId, actionButton) {
   const booking = window.FNAdmin.state.bookings.find((item) => item.id === bookingId);
   if (!booking) return;
 
@@ -66,25 +70,64 @@ window.FNAdminBookings.handleAction = function(action, bookingId) {
   }
 
   if (action === 'confirm') {
+    if (booking.bookingStatus !== 'Pending') {
+      this.render();
+      return;
+    }
+    if (actionButton) {
+      actionButton.disabled = true;
+      actionButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    }
     if (window.FNAdmin.hasBookingConflict(booking, booking.id)) {
       booking.bookingStatus = 'Rejected';
       window.FNAdminComponents.showToast('Booking rejected: already booked. Please choose another time.', 'error');
       window.FNAdmin.createBookingNotification(booking, 'Booking rejected', booking.court + ' could not confirm your booking because the time slot is no longer available.');
-      window.FNAdmin.syncBookings(booking);
+      window.FNAdmin.syncBookings(booking).catch((error) => console.error('Unable to release rejected booking:', error));
       this.render();
       return;
     }
-    booking.bookingStatus = 'Confirmed';
-    window.FNAdmin.createBookingNotification(booking, 'Booking confirmed', booking.court + ' confirmed your booking for ' + booking.date + ' at ' + booking.startTime + '.');
-    window.FNAdminComponents.showToast('Booking confirmed.', 'success');
+    const previousStatus = booking.bookingStatus;
+    window.FNAdmin.setBookingStatus(booking, 'Confirmed');
+    const update = window.FNAdmin.syncBookings(booking);
+    update.then(() => {
+      window.FNAdminComponents.showToast('Booking confirmed.', 'success');
+      this.render();
+      return window.FNAdmin.createBookingNotification(booking, 'Booking confirmed', 'Booking ID: ' + booking.id + '. ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + '. Duration: ' + booking.duration + ' minutes. Price: NPR ' + Number(booking.amount || 0).toLocaleString() + '. Booking status: Confirmed. Payment status: ' + booking.paymentStatus + '.').catch((notificationError) => {
+        console.error('Unable to send booking confirmation notification:', notificationError);
+      });
+    }).catch((error) => {
+      booking.bookingStatus = previousStatus;
+      console.error('Unable to confirm booking:', error);
+      const message = error && error.code === 'permission-denied'
+        ? 'Booking could not be confirmed. Sign in with an authorized staff account and deploy firebase/firestore.rules.'
+        : error && error.code === 'resource-exhausted'
+        ? 'Booking could not be confirmed because the Firebase Firestore quota is exhausted. Check Firebase usage/billing and try again after the quota resets.'
+        : 'Booking could not be confirmed: ' + (error.message || 'unknown error.');
+      window.FNAdminComponents.showToast(message, 'error');
+      this.render();
+    });
+    return;
+  } else if (action === 'reject') {
+    const previousStatus = booking.bookingStatus;
+    window.FNAdmin.setBookingStatus(booking, 'Rejected');
+    window.FNAdmin.createBookingNotification(booking, 'Booking rejected', 'Booking ID: ' + booking.id + '. ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' was rejected. The slot is available again.');
+    window.FNAdmin.syncBookings(booking).then(() => {
+      window.FNAdminComponents.showToast('Booking rejected and time released.', 'success');
+      this.render();
+    }).catch((error) => {
+      booking.bookingStatus = previousStatus;
+      window.FNAdminComponents.showToast('Booking could not be rejected: ' + (error.message || 'permission denied.'), 'error');
+      this.render();
+    });
+    return;
   } else if (action === 'verify-payment') {
     booking.paymentStatus = 'Paid';
     const payment = window.FNAdmin.state.payments.find((item) => item.bookingId === booking.id);
     if (payment) payment.status = 'Paid';
     window.FNAdminComponents.showToast(booking.paymentMethod + ' payment verified.', 'success');
   } else if (action === 'cancel') {
-    booking.bookingStatus = 'Cancelled';
-    window.FNAdmin.createBookingNotification(booking, 'Booking cancelled', booking.court + ' booking on ' + booking.date + ' was cancelled by the administrator.');
+    window.FNAdmin.setBookingStatus(booking, 'Cancelled');
+    window.FNAdmin.createBookingNotification(booking, 'Booking cancelled', 'Booking ID: ' + booking.id + '. ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' was cancelled. The slot is available again.');
     window.FNAdminComponents.showToast('Booking cancelled.', 'success');
   }
 
@@ -98,7 +141,7 @@ window.FNAdminBookings.init = function() {
 
   const statusFilter = document.getElementById('bookingStatusFilter');
   if (statusFilter) {
-    const statuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'Refunded'];
+    const statuses = ['Pending', 'Confirmed', 'Rejected', 'Cancelled', 'Completed'];
     statuses.forEach((status) => {
       const option = document.createElement('option');
       option.value = status.toLowerCase();

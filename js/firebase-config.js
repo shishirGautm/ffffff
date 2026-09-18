@@ -49,8 +49,8 @@ window.FNAdmin.state = {
     { id: 'match-2', teamA: 'Lions FC', teamB: 'Mile High', court: 'GoalZone Futsal', date: '2026-09-18', time: '19:30', duration: 90, referee: 'Shambhu Rai', score: '1 - 1', status: 'Live' }
   ],
   tournaments: [
-    { id: 'tournament-1', name: 'Kathmandu Futsal League', location: 'Kathmandu', startDate: '2026-10-01', endDate: '2026-10-14', fee: 2500, prize: 50000, maxTeams: 12, status: 'Open' },
-    { id: 'tournament-2', name: 'Pokhara Community Cup', location: 'Pokhara', startDate: '2026-10-10', endDate: '2026-10-18', fee: 2000, prize: 35000, maxTeams: 10, status: 'Closed' }
+    { id: 'tournament-1', name: 'Kathmandu Futsal League', courtId: 'court-1', courtName: 'Anveshan Futsal', location: 'Tinkune, Kathmandu, Kathmandu, Bagmati', startDate: '2026-10-01', endDate: '2026-10-14', fee: 2500, prize: 50000, maxTeams: 12, status: 'Open' },
+    { id: 'tournament-2', name: 'Pokhara Community Cup', courtId: 'court-4', courtName: 'PlayArena', location: 'Lakeside, Pokhara, Kaski, Gandaki', startDate: '2026-10-10', endDate: '2026-10-18', fee: 2000, prize: 35000, maxTeams: 10, status: 'Closed' }
   ],
   payments: [
     { id: 'txn-1', bookingId: 'BK-1001', user: 'Ritesh Tamang', amount: 4400, method: 'eSewa', paymentDate: '2026-09-10', status: 'Paid' },
@@ -82,6 +82,28 @@ window.FNAdmin.getBookingSlotId = function(booking) {
   return [booking.courtId || booking.court, booking.date, booking.startTime, booking.endTime].join('_').replace(/[^a-zA-Z0-9_-]/g, '-');
 };
 
+window.FNAdmin.canTransitionBookingStatus = function(currentStatus, nextStatus) {
+  const current = String(currentStatus || '').toLowerCase();
+  const next = String(nextStatus || '').toLowerCase();
+  if (current === next) return true;
+  const transitions = {
+    pending: ['confirmed', 'rejected', 'cancelled'],
+    confirmed: ['cancelled', 'completed'],
+    rejected: [],
+    cancelled: [],
+    completed: []
+  };
+  return (transitions[current] || []).includes(next);
+};
+
+window.FNAdmin.setBookingStatus = function(booking, nextStatus) {
+  if (!this.canTransitionBookingStatus(booking.bookingStatus, nextStatus)) {
+    throw new Error('Booking status cannot change from ' + (booking.bookingStatus || 'Unknown') + ' to ' + nextStatus + '.');
+  }
+  booking.bookingStatus = nextStatus;
+  return booking;
+};
+
 window.FNAdmin.hasBookingConflict = function(booking, excludeBookingId) {
   const toMinutes = (time) => {
     const parts = String(time || '').split(':').map(Number);
@@ -89,8 +111,10 @@ window.FNAdmin.hasBookingConflict = function(booking, excludeBookingId) {
   };
   const bookingStart = toMinutes(booking.startTime);
   const bookingEnd = toMinutes(booking.endTime);
+  const today = new Date().toISOString().slice(0, 10);
   return (this.state.bookings || []).some((item) => {
-    if (item.id === excludeBookingId || item.bookingStatus === 'Cancelled' || item.bookingStatus === 'Rejected') return false;
+    const status = String(item.bookingStatus || '').toLowerCase();
+    if (item.id === excludeBookingId || status !== 'confirmed' || (item.date && item.date < today)) return false;
     if (!((item.courtId && item.courtId === booking.courtId) || item.court === booking.court) || item.date !== booking.date) return false;
     return bookingStart < toMinutes(item.endTime) && toMinutes(item.startTime) < bookingEnd;
   });
@@ -103,14 +127,25 @@ window.FNAdmin.syncBookings = function(booking) {
   }
 
   if (!window.firebase || !firebase.firestore) return Promise.reject(new Error('Firebase is not available.'));
+  if (!firebase.auth || !firebase.auth().currentUser) {
+    const authenticationError = new Error('You must be signed in to update bookings.');
+    authenticationError.code = 'unauthenticated';
+    return Promise.reject(authenticationError);
+  }
   const database = firebase.firestore();
-  const saveBooking = database.collection('bookings').doc(booking.id).set(booking, { merge: true });
-  if (booking.bookingStatus !== 'Cancelled' && booking.bookingStatus !== 'Rejected') return saveBooking.then(() => window.FNAdminData.logActivity('update', 'bookings', booking.id, { status: booking.bookingStatus }));
+  const status = String(booking.bookingStatus || '').toLowerCase();
+  const slotReleased = ['cancelled', 'rejected', 'completed'].includes(status);
+  const bookingRef = database.collection('bookings').doc(booking.id);
   const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
-  return saveBooking.then(() => slotRef.get().then((slot) => {
-    if (slot.exists && slot.data().bookingId === booking.id) return slotRef.set({ status: 'Cancelled' }, { merge: true });
-    return null;
-  })).then(() => window.FNAdminData.logActivity('update', 'bookings', booking.id, { status: booking.bookingStatus }));
+  return database.runTransaction((transaction) => transaction.get(slotRef).then((slot) => {
+    transaction.set(bookingRef, booking, { merge: true });
+    if (slot.exists && slot.data().bookingId === booking.id) {
+      transaction.set(slotRef, {
+        status: slotReleased ? 'Available' : booking.bookingStatus,
+        bookingStatus: booking.bookingStatus
+      }, { merge: true });
+    }
+  }));
 };
 
 window.FNAdmin.deleteBooking = function(booking) {
@@ -152,7 +187,7 @@ window.FNAdmin.createBooking = function(booking) {
     this.state.bookings.push(booking);
     this.state.payments.push({ id: 'TX-' + booking.id, bookingId: booking.id, user: booking.user, userId: booking.userId, courtId: booking.courtId, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' });
     this.state.notifications = this.state.notifications || [];
-    this.state.notifications.push({ id: 'booking-' + booking.id, title: 'New booking received', message: booking.user + ' booked ' + booking.court + ' for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Staff', courtId: booking.courtId, date: new Date().toISOString(), status: 'Sent', type: 'booking' });
+    this.state.notifications.push({ id: 'booking-' + booking.id, title: 'New booking request', message: booking.user + ' requested ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' for NPR ' + Number(booking.amount || 0).toLocaleString() + '. Status: Pending. Booking ID: ' + booking.id + '.', target: 'Staff', courtId: booking.courtId, date: new Date().toISOString(), status: 'Sent', type: 'booking' });
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
     return Promise.resolve(booking);
   }
@@ -164,14 +199,23 @@ window.FNAdmin.createBooking = function(booking) {
   const paymentRef = database.collection('payments').doc('TX-' + booking.id);
   const notificationRef = database.collection('notifications').doc('booking-' + booking.id);
   const payment = { id: 'TX-' + booking.id, bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, user: booking.user, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' };
-  const notification = { id: 'booking-' + booking.id, bookingId: booking.id, userId: booking.userId, title: 'New booking received', message: booking.user + ' booked ' + booking.court + ' for ' + booking.date + ' from ' + booking.startTime + ' to ' + booking.endTime + '.', target: 'Staff', courtId: booking.courtId, date: new Date().toISOString(), status: 'Sent', type: 'booking' };
+  const notification = { id: 'booking-' + booking.id, bookingId: booking.id, userId: booking.userId, title: 'New booking request', message: booking.user + ' requested ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' for NPR ' + Number(booking.amount || 0).toLocaleString() + '. Status: Pending. Booking ID: ' + booking.id + '.', target: 'Staff', courtId: booking.courtId, date: new Date().toISOString(), status: 'Sent', type: 'booking' };
   return database.runTransaction((transaction) => transaction.get(slotRef).then((slot) => {
-    if (slot.exists && slot.data().status !== 'Cancelled') {
+    const slotData = slot.exists ? slot.data() : {};
+    const slotStatus = String(slotData.status || '').toLowerCase();
+    const bookingStatus = String(slotData.bookingStatus || '').toLowerCase();
+    const slotDate = String(slotData.date || booking.date);
+    const today = new Date().toISOString().slice(0, 10);
+    const isExpired = slotDate < today;
+    const isAvailable = ['available', 'pending', 'cancelled', 'released', 'rejected', 'completed'].includes(slotStatus)
+      || ['available', 'pending', 'cancelled', 'rejected', 'completed'].includes(bookingStatus);
+    if (slot.exists && !isExpired && !isAvailable) {
       const conflictError = new Error('Already booked. Please choose another time.');
       conflictError.code = 'already-booked';
+      conflictError.slotStatus = slotData.bookingStatus || slotData.status || 'Active';
       throw conflictError;
     }
-    transaction.set(slotRef, { bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, date: booking.date, startTime: booking.startTime, endTime: booking.endTime, status: 'Active' });
+    transaction.set(slotRef, { bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, date: booking.date, startTime: booking.startTime, endTime: booking.endTime, status: booking.bookingStatus, bookingStatus: booking.bookingStatus });
     transaction.set(bookingRef, booking);
     transaction.set(paymentRef, payment);
     transaction.set(notificationRef, notification);
@@ -179,7 +223,7 @@ window.FNAdmin.createBooking = function(booking) {
     window.FNAdmin.state.bookings = [...(window.FNAdmin.state.bookings || []).filter((item) => item.id !== booking.id), booking];
     window.FNAdmin.state.notifications = [...(window.FNAdmin.state.notifications || []).filter((item) => item.id !== notification.id), notification];
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
-    return window.FNAdminData.logActivity('create', 'bookings', booking.id, { paymentId: payment.id, notificationId: notification.id }).then(() => booking);
+    return booking;
   });
 };
 
@@ -292,6 +336,7 @@ window.FNAdmin.createBookingNotification = function(booking, title, message) {
   const targetUser = (this.state.users || []).find((user) => (booking.userId && user.id === booking.userId) || (booking.userEmail && user.email === booking.userEmail) || (booking.user && user.name === booking.user));
   const notification = {
     id: 'booking-notification-' + booking.id + '-' + Date.now(),
+    bookingId: booking.id,
     title,
     message,
     target: 'Users',
@@ -310,5 +355,5 @@ window.FNAdmin.createBookingNotification = function(booking, title, message) {
     return Promise.resolve(notification);
   }
 
-  return window.FNAdminData.save('notifications', notification.id, notification).then(() => notification);
+  return window.FNAdminData.getCollection('notifications').doc(notification.id).set(notification, { merge: true }).then(() => notification);
 };

@@ -204,7 +204,7 @@ window.FNOwnerPortal.render = function() {
     const mapLocation = [court.name, location].filter(Boolean).join(', ');
     const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapLocation);
     const mapEmbedUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(mapLocation) + '&output=embed';
-    return '<article class="owner-court-card">' + ((court.images && court.images[0]) ? '<button class="court-image-button" type="button" data-court-image="' + court.images[0] + '" data-court-name="' + court.name + '" aria-label="View ' + court.name + ' image"><img class="court-card-image" src="' + court.images[0] + '" alt="' + court.name + '" /><span><i class="fa-solid fa-expand"></i> View image</span></button>' : '') + '<h3>' + court.name + '</h3><p>' + location + '</p><div class="owner-court-map"><div class="owner-court-map-heading"><strong>' + court.name + '</strong><span>Live location</span></div><iframe src="' + mapEmbedUrl + '" title="Live map for ' + court.name + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + court.name + ' map</a></div><form class="owner-court-form" data-court-id="' + court.id + '"><label>Futsal name<input name="name" value="' + (court.name || '') + '" required /></label><label>Futsal photo<input name="photo" type="file" accept="image/*" /></label><label>Address<input name="address" value="' + (court.address || '') + '" required /></label><label>City<input name="city" value="' + (court.city || '') + '" required /></label><label>District<input name="district" value="' + (court.district || '') + '" /></label><label>Province<input name="province" value="' + (court.province || '') + '" /></label><label>Contact number<input name="contactNumber" value="' + (court.contactNumber || '') + '" /></label><label>Price per hour<input name="pricePerHour" type="number" min="0" value="' + court.pricePerHour + '" required /></label><label>Court type<select name="type"><option value="Indoor" ' + (court.type === 'Indoor' ? 'selected' : '') + '>Indoor</option><option value="Outdoor" ' + (court.type === 'Outdoor' ? 'selected' : '') + '>Outdoor</option></select></label><label>Turf type<select name="turfType"><option value="Artificial" ' + (court.turfType === 'Artificial' ? 'selected' : '') + '>Artificial</option><option value="Synthetic" ' + (court.turfType === 'Synthetic' ? 'selected' : '') + '>Synthetic</option><option value="Hybrid" ' + (court.turfType === 'Hybrid' ? 'selected' : '') + '>Hybrid</option></select></label><label>Availability<select name="status"><option value="active" ' + (court.status === 'active' ? 'selected' : '') + '>Available</option><option value="inactive" ' + (court.status === 'inactive' ? 'selected' : '') + '>Unavailable</option></select></label><label>Opening time<input name="openingTime" type="time" value="' + (court.openingTime || '08:00') + '" required /></label><label>Closing time<input name="closingTime" type="time" value="' + (court.closingTime || '22:00') + '" required /></label><label class="owner-field-wide">Description<textarea name="description" rows="3">' + (court.description || '') + '</textarea></label><button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save court settings</button></form></article>';
+    return '<article class="owner-court-card">' + ((court.images && court.images[0]) ? '<button class="court-image-button" type="button" data-court-image="' + court.images[0] + '" data-court-name="' + court.name + '" aria-label="View ' + court.name + ' image"><img class="court-card-image" src="' + court.images[0] + '" alt="' + court.name + '" /><span><i class="fa-solid fa-expand"></i> View image</span></button>' : '') + '<h3>' + court.name + '</h3><p>' + location + '</p><div class="owner-court-map"><div class="owner-court-map-heading"><strong>' + court.name + '</strong><span>Live location</span></div><iframe src="' + mapEmbedUrl + '" title="Live map for ' + court.name + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + court.name + ' map</a></div><form class="owner-court-form" data-court-id="' + court.id + '"><label>Futsal name<input name="name" value="' + (court.name || '') + '" required /></label><label>Futsal photo<input name="photo" type="file" accept="image/*" /></label><label>Address<input name="address" value="' + (court.address || '') + '" required /></label><label>City<input name="city" value="' + (court.city || '') + '" required /></label><label>District<input name="district" value="' + (court.district || '') + '" /></label><label>Province<input name="province" value="' + (court.province || '') + '" /></label><label>Contact number<input name="contactNumber" value="' + (court.contactNumber || '') + '" /></label><label>Price per hour<input name="pricePerHour" type="number" min="0" value="' + court.pricePerHour + '" required /></label><label>Slot duration (minutes)<input name="slotDuration" type="number" min="30" step="30" value="' + (court.slotDuration || 60) + '" required /></label><label>Blocked slots<input name="blockedSlots" type="text" value="' + (court.blockedSlots || []).join(', ') + '" placeholder="YYYY-MM-DD | HH:MM - HH:MM" /><small>Separate blocked slots with commas.</small></label><label>Court type<select name="type"><option value="Indoor" ' + (court.type === 'Indoor' ? 'selected' : '') + '>Indoor</option><option value="Outdoor" ' + (court.type === 'Outdoor' ? 'selected' : '') + '>Outdoor</option></select></label><label>Turf type<select name="turfType"><option value="Artificial" ' + (court.turfType === 'Artificial' ? 'selected' : '') + '>Artificial</option><option value="Synthetic" ' + (court.turfType === 'Synthetic' ? 'selected' : '') + '>Synthetic</option><option value="Hybrid" ' + (court.turfType === 'Hybrid' ? 'selected' : '') + '>Hybrid</option></select></label><label>Availability<select name="status"><option value="active" ' + (court.status === 'active' ? 'selected' : '') + '>Available</option><option value="inactive" ' + (court.status === 'inactive' ? 'selected' : '') + '>Unavailable</option></select></label><label>Opening time<input name="openingTime" type="time" value="' + (court.openingTime || '08:00') + '" required /></label><label>Closing time<input name="closingTime" type="time" value="' + (court.closingTime || '22:00') + '" required /></label><label class="owner-field-wide">Description<textarea name="description" rows="3">' + (court.description || '') + '</textarea></label><button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save court settings</button></form></article>';
   }).join('');
 
   panel.querySelectorAll('[data-court-image]').forEach((button) => button.addEventListener('click', () => {
@@ -237,6 +237,8 @@ window.FNOwnerPortal.render = function() {
       status: data.get('status'),
       openingTime: data.get('openingTime'),
       closingTime: data.get('closingTime'),
+      slotDuration: Number(data.get('slotDuration')) || 60,
+      blockedSlots: String(data.get('blockedSlots') || '').split(',').map((slot) => slot.trim()).filter(Boolean),
       description: data.get('description'),
       ownerId: court.ownerId || (owner && owner.uid)
     };
@@ -285,7 +287,7 @@ window.FNOwnerPortal.render = function() {
     }
     if (button.dataset.ownerBookingAction === 'cancel') {
       if (!window.confirm('Delete this reservation? It will be cancelled and the time will become available.')) return;
-      booking.bookingStatus = 'Cancelled';
+      window.FNAdmin.setBookingStatus(booking, 'Cancelled');
       window.FNAdmin.syncBookings(booking).then(() => {
         this.render();
         window.FNAdminComponents.showToast('Reservation deleted and time released.', 'success');
@@ -296,7 +298,7 @@ window.FNOwnerPortal.render = function() {
       return;
     }
     if (button.dataset.ownerBookingAction === 'reject') {
-      booking.bookingStatus = 'Rejected';
+      window.FNAdmin.setBookingStatus(booking, 'Rejected');
       window.FNAdmin.syncBookings(booking).then(() => {
         this.render();
         window.FNAdminComponents.showToast('Booking rejected.', 'success');
@@ -304,7 +306,7 @@ window.FNOwnerPortal.render = function() {
       return;
     }
     if (window.FNAdmin.hasBookingConflict(booking, booking.id)) {
-      booking.bookingStatus = 'Rejected';
+      window.FNAdmin.setBookingStatus(booking, 'Rejected');
       window.FNAdmin.syncBookings(booking).then(() => {
         this.render();
         window.FNAdminComponents.showToast('Booking rejected: already booked for this date and time.', 'error');
@@ -314,7 +316,7 @@ window.FNOwnerPortal.render = function() {
       });
       return;
     }
-    booking.bookingStatus = 'Confirmed';
+    window.FNAdmin.setBookingStatus(booking, 'Confirmed');
     window.FNAdmin.syncBookings(booking).then(() => {
       this.render();
       window.FNAdminComponents.showToast('Booking confirmed.', 'success');

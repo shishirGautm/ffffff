@@ -80,6 +80,60 @@
 
   .user-booking-layout,
   .owner-portal-grid { grid-template-columns: 1fr; }
+
+  .owner-court-card,
+  .user-panel { min-width: 0; }
+
+  .owner-court-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .user-court-directory { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .user-court-card .court-actions { flex-wrap: wrap; }
+  .user-court-card .court-actions > * { min-width: 0; }
+
+  .table-wrap { max-width: 100%; }
+  table { min-width: 720px; }
+}
+
+@media (max-width: 768px) {
+  .topbar__actions { margin-left: auto; }
+  .topbar__left { flex: 1 1 auto; }
+  .topbar__actions .notification-menu { flex: 0 0 auto; }
+
+  .user-top-nav-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .user-top-nav-bar button { justify-content: center; min-width: 0; }
+
+  .owner-header-actions { justify-content: flex-start; }
+  .owner-header-action { min-width: 0; }
+
+  .user-booking-item > div:last-child,
+  .owner-booking-row > div:last-child {
+    width: 100%;
+  }
+  .user-booking-item > div:last-child {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .user-booking-item .booking-price,
+  .user-booking-item .booking-cancel,
+  .user-booking-item .booking-review,
+  .user-booking-item .booking-reschedule {
+    margin: 0;
+  }
+
+  .owner-booking-actions {
+    justify-content: flex-start;
+  }
+  .owner-booking-actions button { flex: 0 1 auto; }
+
+  .court-location {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .map-link { white-space: normal; }
 }
 
 @media (max-width: 640px) {
@@ -150,6 +204,7 @@
   .owner-header-actions > .btn { flex: 0 0 auto; }
   .user-header h2 { font-size: 1.35rem; }
   .user-top-nav-bar { margin-right: -2px; margin-left: -2px; }
+  .user-top-nav-bar { grid-template-columns: 1fr 1fr; }
   .user-dashboard-banner { padding: 16px; border-radius: 16px; }
   .user-dashboard-actions { flex-direction: column; }
   .user-dashboard-actions .btn { width: 100%; }
@@ -170,6 +225,7 @@
   .owner-profile-content,
   .owner-profile-details,
   .user-court-directory { grid-template-columns: 1fr; }
+  .owner-court-form { grid-template-columns: 1fr; }
   .owner-period-stats > div { flex-wrap: wrap; }
   .owner-booking-row,
   .user-booking-item { flex-direction: column; gap: 10px; }
@@ -178,9 +234,31 @@
   .user-booking-item .booking-price { align-self: flex-start; }
   .user-venue-tools { width: 100%; align-items: stretch; flex-direction: column; }
   .user-venue-search { min-width: 0; width: 100%; }
+  .user-court-card .court-actions { align-items: stretch; flex-direction: column; }
+  .user-court-card .court-actions > * { width: 100%; text-align: center; }
+  .user-court-card .court-meta { align-items: flex-start; flex-direction: column; }
+  .user-court-card .court-card-title { flex-direction: column; }
+  .user-court-map iframe,
+  .owner-court-map iframe { height: 120px; }
+  .notification-dropdown,
+  .owner-notification-dropdown { right: -8px; width: min(340px, calc(100vw - 28px)); }
+  .table-wrap { margin-right: -2px; }
 
   .modal__pane { width: calc(100vw - 28px); max-height: 90vh; padding: 18px; border-radius: 18px; }
   .empty-state { padding: 32px 18px; }
+
+  #ownerSection > .user-header { margin: 0 0 14px; padding: 4px 0 16px; }
+  .user-dashboard-banner { min-height: 0; }
+  .user-top-nav-bar { top: 6px; }
+  .owner-summary-card { min-height: 108px; }
+  .user-dashboard-main > section,
+  .user-dashboard-main > .user-booking-layout,
+  .user-dashboard-main > .user-grid,
+  .user-dashboard-main > .user-dashboard-banner,
+  #ownerSection > .user-header,
+  #ownerSection > .owner-summary-grid,
+  #ownerSection > .user-panel,
+  #ownerSection > .owner-portal-grid { margin-bottom: 16px; }
 }
 
 @media (max-width: 420px) {
@@ -199,4 +277,3 @@
   .owner-header-action span { display: none; }
   .owner-notification-menu { flex: 0 0 auto; }
 }
-

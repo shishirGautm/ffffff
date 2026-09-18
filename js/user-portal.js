@@ -31,8 +31,8 @@ window.FNUserPortal.renderNotifications = function() {
   const notifications = (window.FNAdmin.state.notifications || []).filter((item) => {
     const target = String(item.target || '').toLowerCase();
     const belongsToUser = user && (item.userId === user.uid || item.targetUserId === user.uid || item.targetUserEmail === user.email);
-    const bookingUpdate = item.type === 'booking' && ['booking confirmed', 'booking rejected'].includes(String(item.title || '').toLowerCase());
-    return new Date(item.date || 0).getTime() >= expiryLimit && bookingUpdate && belongsToUser;
+    const userUpdate = item.type === 'booking' || item.type === 'tournament';
+    return new Date(item.date || 0).getTime() >= expiryLimit && userUpdate && belongsToUser;
   });
   list.innerHTML = notifications.length ? notifications.map((item) => {
     const canDelete = user && (item.userId === user.uid || item.targetUserId === user.uid || item.targetUserEmail === user.email);
@@ -71,7 +71,7 @@ window.FNUserPortal.renderProfile = function() {
   identity.innerHTML = identityImage + '<div><strong>' + name + '</strong><span>Player account</span></div>';
   details.innerHTML = '<div><span>Name</span><strong>' + name + '</strong></div><div><span>Age</span><strong>' + (profile.age || 'Not added') + '</strong></div><div><span>Contact</span><strong>' + (profile.phone || profile.contactNumber || 'Not added') + '</strong></div><div><span>Email address</span><strong>' + (profile.email || user.email || 'Not available') + '</strong></div><div><span>Account type</span><strong>' + (user.role || profile.role || 'User') + '</strong></div><div><span>Upcoming bookings</span><strong>' + upcomingBookings + '</strong></div>';
   const profileForm = document.getElementById('userProfileForm');
-  if (profileForm && profileForm.dataset.profilePopulated !== 'true') {
+  if (profileForm && (profileForm.dataset.profilePopulated !== 'true' || profileForm.classList.contains('hidden'))) {
     profileForm.elements.name.value = name;
     profileForm.elements.age.value = profile.age || '';
     profileForm.elements.phone.value = profile.phone || profile.contactNumber || '';
@@ -109,16 +109,35 @@ window.FNUserPortal.updateTimeSlots = function() {
   const openingMinutes = this.toMinutes(selectedCourt?.openingTime || '06:00');
   const closingMinutes = this.toMinutes(selectedCourt?.closingTime || '22:00');
   const slotDuration = Number(selectedCourt?.slotDuration || 60);
+  const date = document.getElementById('userBookingDate') ? document.getElementById('userBookingDate').value : '';
+  const blockedSlots = selectedCourt && Array.isArray(selectedCourt.blockedSlots) ? selectedCourt.blockedSlots : [];
   timeSelect.innerHTML = '';
   for (let start = openingMinutes; start + slotDuration <= closingMinutes; start += slotDuration) {
     const end = start + slotDuration;
     const startTime = this.toTime(start);
     const endTime = this.toTime(end);
     const option = document.createElement('option');
+    const slotKey = date + ' | ' + startTime + ' - ' + endTime;
+    const matchingBooking = (window.FNAdmin.state.bookings || []).find((item) => {
+      const status = String(item.bookingStatus || '').toLowerCase();
+      return status === 'confirmed'
+        && item.date === date
+        && ((item.courtId && item.courtId === (selectedCourt && selectedCourt.id)) || item.court === (selectedCourt && selectedCourt.name))
+        && this.toMinutes(startTime) < this.toMinutes(item.endTime)
+        && this.toMinutes(item.startTime) < this.toMinutes(endTime);
+    });
+    const booked = !!matchingBooking;
+    const blocked = blockedSlots.includes(slotKey);
     option.value = startTime + '|' + endTime;
-    option.textContent = this.toTimeLabel(startTime) + ' - ' + this.toTimeLabel(endTime);
+    const bookingStatus = matchingBooking ? 'confirmed' : '';
+    const slotLabel = bookingStatus === 'confirmed' ? 'Booked' : blocked ? 'Unavailable' : 'Available';
+    option.textContent = this.toTimeLabel(startTime) + ' - ' + this.toTimeLabel(endTime) + ' - ' + slotLabel;
+    option.dataset.availability = bookingStatus === 'confirmed' ? 'booked' : (blocked ? 'unavailable' : 'available');
+    option.disabled = booked || blocked;
     timeSelect.appendChild(option);
   }
+  const firstAvailable = Array.from(timeSelect.options).find((option) => !option.disabled);
+  if (firstAvailable) timeSelect.value = firstAvailable.value;
 };
 
 window.FNUserPortal.toMinutes = function(time) {
@@ -188,21 +207,29 @@ window.FNUserPortal.renderBookings = function() {
 
   const bookings = this.getUserBookings().sort((first, second) => (first.date + first.startTime).localeCompare(second.date + second.startTime));
   const today = new Date().toISOString().slice(0, 10);
-  const upcoming = bookings.filter((booking) => booking.date >= today && !['Cancelled', 'Rejected'].includes(booking.bookingStatus));
+  const upcoming = bookings.filter((booking) => booking.date >= today && ['Pending', 'Confirmed'].includes(booking.bookingStatus));
+  const groupedBookings = [
+    { label: 'Upcoming', items: upcoming },
+    { label: 'Completed', items: bookings.filter((booking) => booking.bookingStatus === 'Completed' || (booking.date < today && !['Cancelled', 'Rejected'].includes(booking.bookingStatus))) },
+    { label: 'Cancelled', items: bookings.filter((booking) => booking.bookingStatus === 'Cancelled') },
+    { label: 'Rejected', items: bookings.filter((booking) => booking.bookingStatus === 'Rejected') }
+  ];
   this.updateDashboard();
   count.textContent = upcoming.length + ' upcoming booking' + (upcoming.length === 1 ? '' : 's');
   next.textContent = upcoming[0] ? upcoming[0].court + ' • ' + this.formatDate(upcoming[0].date) + ' at ' + upcoming[0].startTime : 'Book a court to see your next match here.';
 
-  list.innerHTML = bookings.length ? bookings.map((booking) => {
+  const renderBooking = (booking) => {
     const existingReview = (window.FNAdmin.state.reviews || []).find((review) => review.bookingId === booking.id || (review.user === booking.user && review.court === booking.court));
     const canReview = ['Confirmed', 'Completed'].includes(booking.bookingStatus) || booking.paymentStatus === 'Paid';
     const bookingStart = new Date(booking.date + 'T' + booking.startTime);
     const canCancel = ['Pending', 'Confirmed'].includes(booking.bookingStatus) && Number.isFinite(bookingStart.getTime()) && bookingStart.getTime() - Date.now() > 60 * 60 * 1000;
+    const rescheduleAction = canCancel ? '<button class="booking-reschedule" type="button" data-reschedule-booking-id="' + booking.id + '">Change time</button>' : '';
     const reviewAction = canReview && !existingReview
       ? '<button class="booking-review" type="button" data-review-booking-id="' + booking.id + '">Rate & review</button>'
       : (existingReview ? '<span class="review-status">Reviewed</span>' : '');
-    return '<div class="user-booking-item"><div><strong>' + booking.court + '</strong><small>' + this.formatDate(booking.date) + ' • ' + booking.startTime + ' - ' + booking.endTime + '</small><small>' + booking.bookingStatus + ' • ' + booking.paymentMethod + '</small></div><div><span class="booking-price">NPR ' + Number(booking.amount || 0).toLocaleString() + '</span>' + (canCancel ? '<button class="booking-cancel" type="button" data-booking-id="' + booking.id + '">Cancel</button>' : '') + reviewAction + '</div></div>';
-  }).join('') : '<p class="muted">You have no bookings yet.</p>';
+    return '<div class="user-booking-item"><div><strong>' + this.escapeHtml(booking.court) + '</strong><small>' + this.formatDate(booking.date) + ' • ' + this.toTimeLabel(booking.startTime) + ' - ' + this.toTimeLabel(booking.endTime) + '</small><small>Booking ID: ' + this.escapeHtml(booking.id) + ' • ' + booking.bookingStatus + ' • Payment: ' + this.escapeHtml(booking.paymentStatus) + '</small></div><div><span class="booking-price">NPR ' + Number(booking.amount || 0).toLocaleString() + '</span>' + rescheduleAction + (canCancel ? '<button class="booking-cancel" type="button" data-booking-id="' + booking.id + '">Cancel</button>' : '') + reviewAction + '</div></div>';
+  };
+  list.innerHTML = bookings.length ? groupedBookings.filter((group) => group.items.length).map((group) => '<section class="booking-history-group"><h4>' + group.label + '</h4>' + group.items.map(renderBooking).join('') + '</section>').join('') : '<p class="muted">You have no bookings yet.</p>';
 
   list.querySelectorAll('[data-booking-id]').forEach((button) => button.addEventListener('click', () => {
     const booking = window.FNAdmin.state.bookings.find((item) => item.id === button.dataset.bookingId);
@@ -214,7 +241,7 @@ window.FNUserPortal.renderBookings = function() {
     }
     const proceed = window.confirm('Cancel booking for ' + booking.court + ' on ' + booking.date + '?');
     if (!proceed) return;
-    booking.bookingStatus = 'Cancelled';
+    window.FNAdmin.setBookingStatus(booking, 'Cancelled');
     window.FNAdmin.createBookingNotification(booking, 'Booking cancelled', 'Your booking at ' + booking.court + ' on ' + booking.date + ' has been cancelled.');
     window.FNAdmin.syncBookings(booking)
       .then(() => {
@@ -229,6 +256,224 @@ window.FNUserPortal.renderBookings = function() {
     if (!booking) return;
     window.FNAdminReviews.openReviewModal(booking);
   }));
+  list.querySelectorAll('[data-reschedule-booking-id]').forEach((button) => button.addEventListener('click', () => {
+    const booking = window.FNAdmin.state.bookings.find((item) => item.id === button.dataset.rescheduleBookingId);
+    const bookingPanel = document.getElementById('userBookingPanel');
+    const courtSelect = document.getElementById('userBookingCourt');
+    const dateInput = document.getElementById('userBookingDate');
+    const bookingForm = document.getElementById('userBookingForm');
+    if (!booking || !bookingPanel || !courtSelect || !dateInput || !bookingForm) return;
+    bookingPanel.classList.remove('hidden');
+    courtSelect.value = booking.courtId;
+    dateInput.value = booking.date;
+    this.updateTimeSlots();
+    const timeSelect = document.getElementById('userBookingTime');
+    timeSelect.value = booking.startTime + '|' + booking.endTime;
+    bookingForm.dataset.rescheduleBookingId = booking.id;
+    bookingPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+};
+
+window.FNUserPortal.getTournamentCourt = function(tournament) {
+  const courts = window.FNAdmin.state.courts || [];
+  return courts.find((court) => String(court.id) === String(tournament.courtId)) || null;
+};
+
+window.FNUserPortal.renderTournaments = function() {
+  const list = document.getElementById('userTournamentsList');
+  if (!list) return;
+
+  const user = window.FNAdminAuth.user || {};
+  const userId = user.uid || (user.email ? 'email:' + user.email : 'guest');
+  const tournaments = (window.FNAdmin.state.tournaments || []).filter((tournament) => tournament.courtId && (!tournament.status || tournament.status !== 'Draft'));
+
+  if (!tournaments.length) {
+    list.innerHTML = '<div class="empty-state"><i class="fa-solid fa-trophy"></i><h3>No tournaments</h3><p>There are no active tournaments available right now.</p></div>';
+    return;
+  }
+
+  list.innerHTML = tournaments.map((tournament) => {
+    const selectedCourt = this.getTournamentCourt(tournament);
+    const courtName = selectedCourt ? selectedCourt.name : (tournament.courtName || 'Selected ground unavailable');
+    const courtLocation = selectedCourt
+      ? [selectedCourt.address, selectedCourt.city, selectedCourt.district, selectedCourt.province].filter(Boolean).join(', ')
+      : (tournament.location || 'Location unavailable');
+    const participants = (Array.isArray(tournament.participants) ? tournament.participants : []).filter((participant) => !['Cancelled', 'Rejected'].includes(participant.registrationStatus));
+    const joinedParticipant = participants.find((participant) => (participant.userId && participant.userId === userId) || (participant.email && participant.email === user.email));
+    const isJoined = !!joinedParticipant;
+    const remainingSlots = Math.max((Number(tournament.maxTeams || 0) || 0) - participants.length, 0);
+    const joinLabel = isJoined ? ((joinedParticipant.registrationStatus || 'Confirmed') === 'Confirmed' ? 'Confirmed' : 'Pending approval') : remainingSlots > 0 ? 'Join tournament' : 'Waitlist full';
+    const joinDisabled = isJoined || remainingSlots <= 0 ? 'disabled' : '';
+    return '<article class="user-tournament-card">' +
+      '<div class="user-tournament-header">' +
+      '<div><p class="eyebrow text-green">Tournament</p><h4>' + this.escapeHtml(tournament.name || 'Untitled tournament') + '</h4></div>' +
+      '<span class="status-badge ' + String(tournament.status || 'Open').toLowerCase() + '">' + (tournament.status || 'Open') + '</span>' +
+      '</div>' +
+      '<p class="user-tournament-description">' + this.escapeHtml(tournament.description || 'A competitive futsal tournament for local players and community teams.') + '</p>' +
+      '<div class="user-tournament-meta"><span><i class="fa-solid fa-futbol"></i> ' + this.escapeHtml(courtName) + '</span><span><i class="fa-solid fa-location-dot"></i> ' + this.escapeHtml(courtLocation) + '</span><span><i class="fa-regular fa-calendar"></i> ' + this.escapeHtml(tournament.startDate || 'TBA') + ' - ' + this.escapeHtml(tournament.endDate || 'TBA') + '</span></div>' +
+      '<div class="user-tournament-stats"><div><small>Fee</small><strong>NPR ' + Number(tournament.fee || 0).toLocaleString() + '</strong></div><div><small>Prize</small><strong>NPR ' + Number(tournament.prize || 0).toLocaleString() + '</strong></div><div><small>Slots</small><strong>' + remainingSlots + ' left</strong></div></div>' +
+      '<div class="user-tournament-footer"><small>' + participants.length + ' players joined</small><button class="btn btn-primary user-tournament-join" type="button" data-tournament-id="' + tournament.id + '" ' + joinDisabled + '>' + joinLabel + '</button></div>' +
+      '</article>';
+  }).join('');
+
+  list.querySelectorAll('.user-tournament-join').forEach((button) => {
+    button.addEventListener('click', () => {
+      const tournament = (window.FNAdmin.state.tournaments || []).find((item) => item.id === button.dataset.tournamentId);
+      if (!tournament) return;
+      this.joinTournament(tournament);
+    });
+  });
+};
+
+window.FNUserPortal.renderMyTournaments = function() {
+  const list = document.getElementById('userMyTournamentsList');
+  if (!list) return;
+
+  const user = window.FNAdminAuth.user || {};
+  const userId = user.uid || (user.email ? 'email:' + user.email : 'guest');
+  const joinedTournaments = (window.FNAdmin.state.tournaments || []).filter((tournament) => {
+    if (!tournament.courtId) return false;
+    const participants = Array.isArray(tournament.participants) ? tournament.participants : [];
+    return participants.some((participant) => ['Confirmed', 'Pending', undefined].includes(participant.registrationStatus) && ((participant.userId && participant.userId === userId) || (participant.email && participant.email === user.email)));
+  });
+
+  if (!joinedTournaments.length) {
+    list.innerHTML = '<div class="empty-state"><i class="fa-solid fa-list-check"></i><h3>No joined tournaments</h3><p>You have not registered for any tournament yet.</p></div>';
+    return;
+  }
+
+  list.innerHTML = joinedTournaments.map((tournament) => {
+    const selectedCourt = this.getTournamentCourt(tournament);
+    const courtName = selectedCourt ? selectedCourt.name : (tournament.courtName || 'Selected ground unavailable');
+    const courtLocation = selectedCourt
+      ? [selectedCourt.address, selectedCourt.city, selectedCourt.district, selectedCourt.province].filter(Boolean).join(', ')
+      : (tournament.location || 'Location unavailable');
+    const participants = (Array.isArray(tournament.participants) ? tournament.participants : []).filter((participant) => !['Cancelled', 'Rejected'].includes(participant.registrationStatus));
+    const currentParticipant = participants.find((participant) => (participant.userId && participant.userId === userId) || (participant.email && participant.email === user.email)) || {};
+    const registrationStatus = currentParticipant.registrationStatus || 'Confirmed';
+    const participantCount = participants.length;
+    return '<article class="user-my-tournament-card">' +
+      '<div class="user-my-tournament-header"><div><p class="eyebrow text-green">' + this.escapeHtml(registrationStatus) + '</p><h4>' + this.escapeHtml(tournament.name || 'Untitled tournament') + '</h4></div><span class="status-badge ' + String(tournament.status || 'Open').toLowerCase() + '">' + (tournament.status || 'Open') + '</span></div>' +
+      '<div class="user-my-tournament-info"><span><i class="fa-solid fa-futbol"></i> ' + this.escapeHtml(courtName) + '</span><span><i class="fa-solid fa-location-dot"></i> ' + this.escapeHtml(courtLocation) + '</span><span><i class="fa-regular fa-calendar"></i> ' + this.escapeHtml(tournament.startDate || 'TBA') + ' - ' + this.escapeHtml(tournament.endDate || 'TBA') + '</span></div>' +
+      '<div class="user-my-tournament-stats"><div><small>Entry</small><strong>NPR ' + Number(tournament.fee || 0).toLocaleString() + '</strong></div><div><small>Prize</small><strong>NPR ' + Number(tournament.prize || 0).toLocaleString() + '</strong></div><div><small>Players</small><strong>' + participantCount + '</strong></div></div>' +
+      '<p class="user-my-tournament-description">' + this.escapeHtml(tournament.description || 'You are registered for this tournament.') + '</p>' +
+      (registrationStatus === 'Pending' ? '<div class="user-my-tournament-actions"><button class="btn btn-secondary user-tournament-cancel" type="button" data-tournament-id="' + tournament.id + '"><i class="fa-solid fa-xmark"></i> Cancel registration</button></div>' : '') +
+      '</article>';
+  }).join('');
+
+  list.querySelectorAll('.user-tournament-cancel').forEach((button) => {
+    button.addEventListener('click', () => {
+      const tournament = (window.FNAdmin.state.tournaments || []).find((item) => item.id === button.dataset.tournamentId);
+      if (tournament) this.cancelTournament(tournament);
+    });
+  });
+};
+
+window.FNUserPortal.cancelTournament = function(tournament) {
+  const user = window.FNAdminAuth.user || {};
+  const userId = user.uid || (user.email ? 'email:' + user.email : 'guest');
+  const participants = (Array.isArray(tournament.participants) ? tournament.participants : []).filter((participant) => !['Cancelled', 'Rejected'].includes(participant.registrationStatus));
+  const participantIndex = participants.findIndex((participant) => (participant.userId && participant.userId === userId) || (participant.email && participant.email === user.email));
+  if (participantIndex < 0) return;
+  if (!window.confirm('Cancel your registration for "' + (tournament.name || 'this tournament') + '"?')) return;
+
+  const updatedTournament = {
+    ...tournament,
+    participants: participants.filter((_, index) => index !== participantIndex)
+  };
+  const savePromise = window.FNAdminData.isLive() ? window.FNAdminData.save('tournaments', tournament.id, updatedTournament) : Promise.resolve(updatedTournament);
+  savePromise.then(() => {
+    const index = (window.FNAdmin.state.tournaments || []).findIndex((item) => item.id === tournament.id);
+    if (index >= 0) window.FNAdmin.state.tournaments[index] = updatedTournament;
+    this.renderTournaments();
+    this.renderMyTournaments();
+    window.FNAdminComponents.showToast('Tournament registration cancelled.', 'success');
+  }).catch((error) => {
+    console.error('Unable to cancel tournament registration:', error);
+    window.FNAdminComponents.showToast('Unable to cancel this registration right now.', 'error');
+  });
+};
+
+window.FNUserPortal.joinTournament = function(tournament) {
+  const user = window.FNAdminAuth.user || {};
+  if (!user.email) {
+    window.FNAdminComponents.showToast('Please sign in to participate in a tournament.', 'error');
+    return;
+  }
+
+  const participants = Array.isArray(tournament.participants) ? tournament.participants : [];
+  const userId = user.uid || ('email:' + user.email);
+  const alreadyJoined = participants.some((participant) => ((participant.userId && participant.userId === userId) || (participant.email && participant.email === user.email)));
+  if (alreadyJoined) {
+    window.FNAdminComponents.showToast('You are already registered for this tournament.', 'success');
+    return;
+  }
+
+  const remainingSlots = Math.max((Number(tournament.maxTeams || 0) || 0) - participants.length, 0);
+  if (remainingSlots <= 0) {
+    window.FNAdminComponents.showToast('This tournament is already full.', 'error');
+    return;
+  }
+
+  const formHtml = '<div class="panel__header"><div><p class="eyebrow text-green">Tournament registration</p><h3>Join ' + this.escapeHtml(tournament.name || 'Tournament') + '</h3></div><button class="icon-button" type="button" data-close-modal="true" aria-label="Close registration"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<form id="tournamentJoinForm"><p class="muted">Enter your team information to register for this tournament.</p><div class="field-grid">' +
+    '<label>Team name<input name="teamName" type="text" required placeholder="e.g. Brothers FC" /></label>' +
+    '<label>Captain name<input name="captainName" type="text" required value="' + this.escapeHtml(user.name || user.email.split('@')[0]) + '" /></label>' +
+    '<label>Contact number<input name="contactNumber" type="tel" required placeholder="+977-98XXXXXXXX" /></label>' +
+    '<label>Squad size<input name="squadSize" type="number" min="1" max="30" required value="5" /></label>' +
+    '<label style="grid-column: 1 / -1;">Team notes<textarea name="teamNotes" placeholder="Add jersey color, player names, or other details..."></textarea></label>' +
+    '</div><div class="form-actions"><button type="button" class="btn btn-secondary" data-close-modal="true">Cancel</button><button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Confirm registration</button></div></form>';
+
+  window.FNAdminComponents.openModal(formHtml);
+  document.querySelectorAll('[data-close-modal="true"]').forEach((button) => button.addEventListener('click', window.FNAdminComponents.closeModal));
+  const joinForm = document.getElementById('tournamentJoinForm');
+  if (!joinForm) return;
+
+  joinForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const formData = new FormData(joinForm);
+    const teamName = String(formData.get('teamName') || '').trim();
+    const captainName = String(formData.get('captainName') || '').trim();
+    const contactNumber = String(formData.get('contactNumber') || '').trim();
+    const squadSize = Number(formData.get('squadSize') || 0);
+    if (!teamName || !captainName || !contactNumber || squadSize < 1) {
+      window.FNAdminComponents.showToast('Please complete your team information.', 'error');
+      return;
+    }
+
+    const updatedTournament = {
+      ...tournament,
+      participants: [
+        ...participants.filter((participant) => !((participant.userId && participant.userId === userId) || (participant.email && participant.email === user.email))),
+        {
+          userId,
+          name: user.name || user.email.split('@')[0],
+          email: user.email,
+          teamName,
+          captainName,
+          contactNumber,
+          squadSize,
+          teamNotes: String(formData.get('teamNotes') || '').trim(),
+          registrationStatus: 'Pending',
+          joinedAt: new Date().toISOString()
+        }
+      ]
+    };
+
+    const savePromise = window.FNAdminData.isLive() ? window.FNAdminData.save('tournaments', tournament.id, updatedTournament) : Promise.resolve(updatedTournament);
+
+    savePromise.then(() => {
+      const index = (window.FNAdmin.state.tournaments || []).findIndex((item) => item.id === tournament.id);
+      if (index >= 0) window.FNAdmin.state.tournaments[index] = updatedTournament;
+      window.FNAdminComponents.closeModal();
+      this.renderTournaments();
+      this.renderMyTournaments();
+      window.FNAdminComponents.showToast('You joined the tournament successfully.', 'success');
+    }).catch((error) => {
+      console.error('Unable to join tournament:', error);
+      window.FNAdminComponents.showToast('Unable to join this tournament right now.', 'error');
+    });
+  });
 };
 
 window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
@@ -381,6 +626,18 @@ window.FNUserPortal.init = function() {
     });
     button.dataset.fnInitialized = 'true';
   });
+  document.querySelectorAll('[data-user-action="close-nav"]').forEach((button) => {
+    if (button.dataset.fnInitialized === 'true') return;
+    button.addEventListener('click', () => {
+      if (userSidebar) userSidebar.classList.remove('open');
+      if (userMobileMenu) {
+        userMobileMenu.setAttribute('aria-expanded', 'false');
+        userMobileMenu.setAttribute('aria-label', 'Open navigation');
+        userMobileMenu.innerHTML = '<i class="fa-solid fa-bars"></i>';
+      }
+    });
+    button.dataset.fnInitialized = 'true';
+  });
   const userNavSelect = document.getElementById('userNavSelect');
   if (userNavSelect && userNavSelect.dataset.fnInitialized !== 'true') {
     userNavSelect.addEventListener('change', () => {
@@ -405,6 +662,8 @@ window.FNUserPortal.init = function() {
     this.updateDashboard();
     this.renderNotifications();
     this.renderCourtDirectory();
+    this.renderTournaments();
+    this.renderMyTournaments();
     return;
   }
 
@@ -416,7 +675,10 @@ window.FNUserPortal.init = function() {
     this.updateTimeSlots();
     this.updateAmount();
   });
-  dateInput.addEventListener('change', () => this.updateAmount());
+  dateInput.addEventListener('change', () => {
+    this.updateTimeSlots();
+    this.updateAmount();
+  });
   timeSelect.addEventListener('change', () => this.updateAmount());
   courtSearch.addEventListener('input', () => {
     const query = courtSearch.value.trim().toLowerCase();
@@ -435,6 +697,8 @@ window.FNUserPortal.init = function() {
   });
   this.updateAmount();
   this.renderCourtDirectory();
+  this.renderTournaments();
+  this.renderMyTournaments();
   this.renderNotifications();
 
   form.addEventListener('submit', (event) => {
@@ -457,6 +721,7 @@ window.FNUserPortal.init = function() {
       window.FNAdminComponents.showToast('Your Firebase login session has expired. Please log in again.', 'error');
       return;
     }
+    const rescheduleId = form.dataset.rescheduleBookingId;
     const bookingId = 'BK-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
     const newBooking = {
       id: bookingId,
@@ -469,8 +734,8 @@ window.FNUserPortal.init = function() {
       date,
       startTime,
       endTime,
-      duration: 60,
-      amount: court.pricePerHour,
+      duration: this.toMinutes(endTime) - this.toMinutes(startTime),
+      amount: Math.round(Number(court.pricePerHour || 0) * (this.toMinutes(endTime) - this.toMinutes(startTime)) / 60),
       paymentMethod: document.getElementById('userBookingPayment').value,
       paymentStatus: 'Pending',
       bookingStatus: 'Pending',
@@ -480,9 +745,25 @@ window.FNUserPortal.init = function() {
       submitButton.disabled = true;
       submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving booking...';
     }
-    Promise.resolve().then(() => window.FNAdmin.createBooking(newBooking)).then(() => {
+    if (rescheduleId && window.FNAdmin.hasBookingConflict(newBooking, rescheduleId)) {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fa-regular fa-calendar-check"></i> Confirm booking';
+      }
+      window.FNAdminComponents.showToast('That new time is already pending or booked. Choose another slot.', 'error');
+      return;
+    }
+    Promise.resolve().then(() => {
+      if (!rescheduleId) return;
+      const previousBooking = window.FNAdmin.state.bookings.find((item) => item.id === rescheduleId);
+      if (!previousBooking) return;
+      window.FNAdmin.setBookingStatus(previousBooking, 'Cancelled');
+      return window.FNAdmin.syncBookings(previousBooking);
+    }).then(() => window.FNAdmin.createBooking(newBooking)).then(() => {
+      delete form.dataset.rescheduleBookingId;
       this.renderBookings();
-      window.FNAdminComponents.showToast('Booking request submitted. The venue will confirm it shortly.', 'success');
+      if (rescheduleId) window.FNAdmin.createBookingNotification(newBooking, 'Booking rescheduled', 'Booking ID ' + newBooking.id + ' is pending for ' + newBooking.court + ' on ' + this.formatDate(newBooking.date) + ', ' + this.toTimeLabel(newBooking.startTime) + ' - ' + this.toTimeLabel(newBooking.endTime) + '.');
+      window.FNAdminComponents.showToast(rescheduleId ? 'Booking rescheduled successfully.' : 'Booking request submitted. The venue will confirm it shortly.', 'success');
       form.reset();
       dateInput.min = today;
       dateInput.value = today;
@@ -492,9 +773,11 @@ window.FNUserPortal.init = function() {
     }).catch((error) => {
       console.error('Unable to create booking:', error);
       const message = error && error.code === 'already-booked'
-        ? 'Already booked. Please choose another time.'
+        ? 'This time slot is ' + (error.slotStatus === 'Pending' ? 'temporarily held' : 'already booked') + '. Please choose another time.'
         : error && error.code === 'permission-denied'
         ? 'Permission denied. Deploy firebase/firestore.rules and make sure the signed-in user is authenticated.'
+        : error && error.code === 'resource-exhausted'
+        ? 'Booking could not be saved because the Firebase Firestore quota is exhausted. Check Firebase usage/billing and try again after the quota resets.'
         : error && error.code
           ? '(' + error.code + ') ' + (error.message || 'Booking could not be saved.')
           : (error.message || 'Booking could not be saved.');

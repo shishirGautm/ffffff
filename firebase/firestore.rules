@@ -6,19 +6,35 @@ service cloud.firestore {
     }
 
     function hasAdminRole(role) {
-      return isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == role;
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == role)
+        || request.auth.token.role == role
+      );
+    }
+
+    function hasUserRole(role) {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role)
+        || request.auth.token.role == role
+      );
     }
 
     function isSuperAdmin() {
-      return hasAdminRole('Super Admin');
+      return hasAdminRole('Super Admin') || hasUserRole('Super Admin');
     }
 
     function isStaff() {
-      return isSuperAdmin() || hasAdminRole('Admin') || hasAdminRole('Manager');
+      return isSuperAdmin() || hasAdminRole('Admin') || hasAdminRole('Manager') || hasUserRole('Admin') || hasUserRole('Manager');
     }
 
     function ownsCourt(courtId) {
       return isAuthenticated() && exists(/databases/$(database)/documents/courts/$(courtId)) && (get(/databases/$(database)/documents/courts/$(courtId)).data.ownerId == request.auth.uid || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name == get(/databases/$(database)/documents/courts/$(courtId)).data.owner));
+    }
+
+    function validBookingStatusTransition() {
+      return request.resource.data.bookingStatus == resource.data.bookingStatus
+        || (resource.data.bookingStatus == 'Pending' && request.resource.data.bookingStatus in ['Confirmed', 'Rejected', 'Cancelled'])
+        || (resource.data.bookingStatus == 'Confirmed' && request.resource.data.bookingStatus in ['Cancelled', 'Completed']);
     }
 
     match /users/{userId} {
@@ -35,8 +51,8 @@ service cloud.firestore {
 
     match /bookings/{bookingId} {
       allow read: if isAuthenticated() && (isStaff() || resource.data.userId == request.auth.uid || ownsCourt(resource.data.courtId));
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Pending') || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Cancelled' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus'])) || (ownsCourt(resource.data.courtId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus']));
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Pending';
+      allow update: if (isStaff() && validBookingStatusTransition()) || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Pending') || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.bookingStatus == 'Cancelled' && resource.data.bookingStatus in ['Pending', 'Confirmed'] && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus'])) || (ownsCourt(resource.data.courtId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookingStatus']) && validBookingStatusTransition());
       allow delete: if isStaff() || ownsCourt(resource.data.courtId);
     }
 
@@ -59,7 +75,15 @@ service cloud.firestore {
 
     match /tournaments/{tournamentId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create, delete: if isStaff();
+      allow update: if isStaff()
+        || (isAuthenticated()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants'])
+          && request.resource.data.get('participants', []).size() == resource.data.get('participants', []).size() + 1
+          && request.resource.data.participants[request.resource.data.get('participants', []).size() - 1].userId == request.auth.uid)
+        || (isAuthenticated()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants'])
+          && request.resource.data.get('participants', []).size() == resource.data.get('participants', []).size() - 1);
     }
 
     match /reviews/{reviewId} {
@@ -81,7 +105,9 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isStaff()
         || (isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.targetUserId == request.auth.uid)
-        || (isAuthenticated() && request.resource.data.type == 'booking' && request.resource.data.target == 'Owners' && request.resource.data.userId == request.auth.uid && getAfter(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.userId == request.auth.uid);
+        || (isAuthenticated() && request.resource.data.type == 'booking' && request.resource.data.target == 'Users' && request.resource.data.bookingId != null && ownsCourt(request.resource.data.courtId) && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.userId == request.resource.data.userId)
+        || (isAuthenticated() && request.resource.data.type == 'booking' && request.resource.data.target == 'Owners' && request.resource.data.userId == request.auth.uid && getAfter(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.userId == request.auth.uid)
+        || (isAuthenticated() && request.resource.data.type == 'booking' && request.resource.data.target == 'Staff' && request.resource.data.userId == request.auth.uid && getAfter(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.userId == request.auth.uid);
       allow update: if isStaff();
       allow delete: if isStaff() || (isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.targetUserId == request.auth.uid || resource.data.targetUserEmail == request.auth.token.email || ownsCourt(resource.data.courtId)));
     }
@@ -89,7 +115,9 @@ service cloud.firestore {
     match /bookingSlots/{slotId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.bookingId == resource.data.bookingId && request.resource.data.status == 'Cancelled') || (ownsCourt(resource.data.courtId) && request.resource.data.bookingId == resource.data.bookingId && request.resource.data.status == 'Cancelled');
+      allow update: if isStaff()
+        || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.bookingId == resource.data.bookingId && request.resource.data.status == 'Available' && request.resource.data.bookingStatus == 'Cancelled')
+        || (ownsCourt(resource.data.courtId) && request.resource.data.bookingId == resource.data.bookingId && request.resource.data.status == 'Available' && request.resource.data.bookingStatus in ['Rejected', 'Cancelled', 'Completed']);
       allow delete: if isStaff() || ownsCourt(resource.data.courtId);
     }
 

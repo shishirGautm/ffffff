@@ -66,6 +66,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.FNAdminAuth.getRole() === 'User' && window.FNUserPortal) {
       window.FNUserPortal.renderBookings();
       window.FNUserPortal.renderNotifications();
+      window.FNUserPortal.updateTimeSlots();
+      window.FNUserPortal.updateAmount();
     }
     if (window.FNAdminAuth.getRole() === 'Owner' && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
@@ -73,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('fn:collection-changed', function(event) {
     const collection = event.detail && event.detail.collection;
     if (window.FNAdminAuth.getRole() === 'Admin') window.FNAdminApp.renderAll();
-    if (window.FNAdminAuth.getRole() === 'User' && ['courts', 'reviews', 'notifications'].includes(collection) && window.FNUserPortal) window.FNUserPortal.init();
+    if (window.FNAdminAuth.getRole() === 'User' && ['courts', 'reviews', 'notifications', 'tournaments'].includes(collection) && window.FNUserPortal) window.FNUserPortal.init();
     if (window.FNAdminAuth.getRole() === 'Owner' && ['courts', 'bookings', 'notifications'].includes(collection) && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
   window.addEventListener('fn:courts-changed', function() {

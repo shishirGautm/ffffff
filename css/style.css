@@ -336,16 +336,6 @@ img { max-width: 100%; display: block; }
   animation: cardReveal 0.36s ease both;
 }
 
-.user-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto auto 0;
-  width: 100%;
-  height: 4px;
-  border-radius: 20px 20px 0 0;
-  background: linear-gradient(90deg, var(--green), rgba(0, 185, 90, 0.2));
-}
-
 .user-panel .panel__header { margin-bottom: 18px; }
 .user-panel h3 { margin: 0; }
 .user-panel h3 { font-size: 1.12rem; line-height: 1.25; }
@@ -453,7 +443,7 @@ img { max-width: 100%; display: block; }
 
 .user-bookings-list { display: grid; gap: 10px; }
 
-.owner-portal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
+.owner-portal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-bottom: 18px; }
 .owner-court-card { background: var(--white); border: 1px solid var(--border); border-radius: 22px; padding: 22px 20px; box-shadow: var(--shadow); }
 .court-card-image { width: 100%; height: 150px; object-fit: cover; border-radius: 14px; margin-bottom: 12px; }
 .court-image-button { position: relative; display: block; width: 100%; padding: 0; border: 0; background: transparent; color: #fff; cursor: zoom-in; text-align: left; }
@@ -487,11 +477,161 @@ img { max-width: 100%; display: block; }
 .user-venue-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 0.82rem; }
 .user-venue-empty { grid-column: 1 / -1; }
 
+.user-tournaments-list,
+.user-my-tournaments-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.user-tournament-card,
+.user-my-tournament-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,242,0.94));
+  border: 1px solid rgba(18, 54, 41, 0.08);
+  box-shadow: 0 12px 26px rgba(16, 30, 25, 0.05);
+}
+
+.user-tournament-header,
+.user-my-tournament-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.user-tournament-header h4,
+.user-my-tournament-header h4 {
+  margin: 8px 0 0;
+  font-size: 1.1rem;
+}
+
+.user-tournament-description,
+.user-my-tournament-description {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.user-tournament-meta,
+.user-my-tournament-info {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.user-tournament-meta span,
+.user-my-tournament-info span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-tournament-stats,
+.user-my-tournament-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.user-tournament-stats small,
+.user-my-tournament-stats small {
+  display: block;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.65rem;
+  margin-bottom: 5px;
+}
+
+.user-tournament-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.user-tournament-footer small {
+  color: var(--muted);
+}
+
+.user-tournament-join {
+  white-space: nowrap;
+}
+
+.user-tournament-join:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.user-my-tournament-actions { padding-top: 4px; border-top: 1px solid var(--border); }
+.user-tournament-cancel { width: 100%; }
+
 .user-court-directory {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 36px;
 }
+
+.user-courts-panel .user-court-directory {
+  margin-top: 28px;
+}
+
+.user-courts-panel {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(0, 200, 83, 0.22);
+  background:
+    linear-gradient(135deg, rgba(0, 200, 83, 0.2), transparent 42%),
+    linear-gradient(145deg, #004d35, #00291c 76%);
+  box-shadow: 0 20px 38px rgba(0, 41, 28, 0.2);
+}
+
+.user-courts-panel .panel__header h3 { color: #f4fff7; }
+.user-courts-panel .panel__header { align-items: center; gap: 18px; }
+.user-courts-panel .panel__header > div:first-child { min-width: 0; }
+.user-courts-panel .panel__header .eyebrow { margin-bottom: 7px; color: #9dffc0; font-size: 0.75rem; font-weight: 850; letter-spacing: 0.08em; text-transform: uppercase; }
+.user-courts-panel .user-venue-tools > .muted { color: rgba(239,255,245,0.72); }
+.user-courts-panel .panel__header h3 { font-size: clamp(1.35rem, 2vw, 1.7rem); font-weight: 850; letter-spacing: -0.02em; line-height: 1.15; }
+.user-courts-panel .user-venue-tools > .muted {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 11px;
+  border: 1px solid rgba(125, 240, 163, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 200, 83, 0.14);
+  color: #c9ffda;
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.user-courts-panel .user-venue-search {
+  min-width: min(320px, 42vw);
+  min-height: 44px;
+  padding: 9px 13px;
+  border-color: rgba(255,255,255,0.18);
+  border-radius: 13px;
+  background: rgba(0, 41, 28, 0.72);
+  color: rgba(239,255,245,0.72);
+}
+.user-courts-panel .user-venue-search:focus-within {
+  border-color: #7df0a3;
+  background: rgba(0, 41, 28, 0.92);
+  box-shadow: 0 0 0 3px rgba(125, 240, 163, 0.18), 0 10px 24px rgba(0, 41, 28, 0.2);
+}
+.user-courts-panel .user-venue-search i { color: #7df0a3; font-size: 0.95rem; }
+.user-courts-panel .user-venue-search input { color: #f4fff7; font-size: 0.88rem; font-weight: 650; }
+.user-courts-panel .user-venue-search input::placeholder { color: rgba(239,255,245,0.68); opacity: 1; }
 
 .user-court-card {
   display: flex;
@@ -506,17 +646,24 @@ img { max-width: 100%; display: block; }
 
 .user-court-card h4 { margin: 0; font-size: 1.05rem; }
 .user-court-card p { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.user-courts-panel .user-court-card h4 { color: #0b2a1d; font-size: 1.12rem; font-weight: 850; letter-spacing: -0.01em; }
+.user-courts-panel .user-court-card p,
+.user-courts-panel .user-court-address { color: #53635a; line-height: 1.55; }
+.user-courts-panel .court-card-title { margin-bottom: 2px; }
 .court-card-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .court-rating-summary { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 0.78rem; }
 .court-rating { color: #d68b00; font-weight: 800; }
 .court-rating i { font-size: 0.72rem; }
 .court-review-count { color: var(--muted); }
+.user-courts-panel .court-review-count { color: #53635a; font-weight: 700; }
 .user-court-address { display: flex; gap: 6px; line-height: 1.45; }
 .user-court-card .court-meta { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .court-price { color: var(--green); font-weight: 800; white-space: nowrap; }
 .user-court-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .user-court-specs span { padding: 8px 9px; border-radius: 8px; background: var(--white); color: var(--text); font-size: 0.78rem; }
 .user-court-specs strong { display: block; margin-bottom: 2px; color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.user-courts-panel .user-court-specs span { border: 1px solid #e0e9e3; }
+.user-courts-panel .user-court-specs strong { color: #53635a; font-weight: 850; }
 .user-court-contact { font-size: 0.78rem; }
 .user-court-contact a { color: var(--green); font-weight: 700; }
 .user-court-amenities { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -525,6 +672,8 @@ img { max-width: 100%; display: block; }
 .user-court-map { overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--white); }
 .user-court-map-heading { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; font-size: 0.72rem; }
 .user-court-map-heading span { color: var(--muted); }
+.user-courts-panel .user-court-map-heading strong { color: #0b2a1d; }
+.user-courts-panel .user-court-map-heading span { color: #53635a; font-weight: 700; }
 .user-court-map iframe { display: block; width: 100%; height: 125px; border: 0; }
 .court-status { font-size: 0.72rem; font-weight: 800; text-transform: capitalize; }
 .court-status.inactive { color: var(--danger); }
@@ -532,6 +681,9 @@ img { max-width: 100%; display: block; }
 .court-actions { display: flex; gap: 8px; align-items: center; }
 .court-actions .btn { padding: 8px 10px; font-size: 0.78rem; }
 .court-reviews-link { color: var(--green); font-size: 0.76rem; font-weight: 800; white-space: nowrap; }
+.user-courts-panel .court-reviews-link,
+.user-courts-panel .court-map-link,
+.user-courts-panel .user-court-contact a { color: #007a3d; font-weight: 850; }
 .court-review-list { display: grid; gap: 10px; max-height: 55vh; overflow: auto; }
 .court-review-item { padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
 .court-review-heading { display: flex; justify-content: space-between; gap: 12px; }
@@ -1188,6 +1340,24 @@ img { max-width: 100%; display: block; }
   font-size: 1.05rem;
 }
 
+.slot-availability-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  grid-column: 1 / -1;
+}
+
+.slot-availability-legend i { font-size: 0.58rem; }
+.slot-availability-legend .available { color: var(--green); }
+.slot-availability-legend .pending { color: var(--warning); }
+.slot-availability-legend .booked { color: var(--danger); }
+
+.booking-history-group { margin-top: 18px; }
+.booking-history-group:first-child { margin-top: 0; }
+.booking-history-group h4 { margin: 0 0 8px; color: var(--sidebar); }
+
 .segmented-control {
   display: flex;
   flex-wrap: wrap;
@@ -1284,6 +1454,580 @@ canvas {
   box-shadow: 0 10px 24px rgba(23,32,28,0.025);
 }
 
+.tournament-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  padding: 18px;
+}
+
+.tournament-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,242,0.96));
+  border: 1px solid rgba(18, 54, 41, 0.08);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 12px 28px rgba(17, 30, 25, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.2s ease;
+}
+
+.tournament-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(17, 30, 25, 0.09);
+}
+
+.tournament-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.tournament-card__header h3 {
+  margin: 8px 0 0;
+  font-size: 1.18rem;
+  line-height: 1.3;
+}
+
+.tournament-card__meta {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.tournament-card__meta div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tournament-card__description {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+  min-height: 52px;
+}
+
+.tournament-card__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(60px, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.tournament-card__stats small {
+  display: block;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+  margin-bottom: 6px;
+}
+
+.tournament-card__stats strong {
+  font-size: 0.98rem;
+}
+
+.tournament-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.tournament-card.status-open {
+  border-color: rgba(0, 185, 90, 0.18);
+}
+
+.tournament-card.status-closed {
+  border-color: rgba(229, 57, 53, 0.15);
+}
+
+.tournament-card.status-draft {
+  border-color: rgba(255, 152, 0, 0.18);
+}
+
+/* Dashboard visual refinement */
+.user-section {
+  background:
+    linear-gradient(135deg, rgba(0, 77, 53, 0.04), transparent 30%),
+    var(--bg);
+}
+
+.user-dashboard-main,
+#ownerSection {
+  position: relative;
+}
+
+.user-header {
+  padding: 10px 2px 22px;
+  border-bottom: 0;
+}
+
+.user-header h2 {
+  letter-spacing: -0.02em;
+  font-size: clamp(1.55rem, 2.2vw, 2rem);
+}
+
+.user-header .eyebrow { margin-bottom: 8px; }
+
+.user-top-nav-bar {
+  position: sticky;
+  top: 12px;
+  z-index: 5;
+  box-shadow: 0 8px 20px rgba(0, 58, 38, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.user-dashboard-banner {
+  position: relative;
+  overflow: hidden;
+  min-height: 170px;
+  padding: 28px;
+  border: 0;
+  border-radius: 22px;
+  background: linear-gradient(120deg, #003b27 0%, #006342 62%, #00a653 100%);
+  color: #fff;
+  box-shadow: 0 20px 38px rgba(0, 77, 53, 0.18);
+}
+
+.user-dashboard-banner::after {
+  content: '';
+  position: absolute;
+  right: -34px;
+  bottom: -58px;
+  width: 220px;
+  height: 220px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 50%;
+  box-shadow: 0 0 0 22px rgba(255,255,255,0.04), 0 0 0 44px rgba(255,255,255,0.03);
+}
+
+.user-dashboard-banner > div,
+.user-dashboard-actions { position: relative; z-index: 1; }
+.user-dashboard-banner .eyebrow,
+.user-dashboard-banner p:last-child { color: rgba(255,255,255,0.72); }
+.user-dashboard-banner h3 { color: #fff; font-size: 1.5rem; }
+.user-dashboard-banner .btn-primary { background: #fff; color: var(--sidebar); }
+.user-dashboard-banner .btn-secondary { border-color: rgba(255,255,255,0.36); color: #fff; }
+
+.user-card,
+.owner-summary-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(0, 77, 53, 0.1);
+  background: rgba(255,255,255,0.82);
+  box-shadow: 0 12px 26px rgba(0, 58, 38, 0.06);
+}
+
+.user-card::after,
+.owner-summary-card::after {
+  content: '';
+  position: absolute;
+  right: -20px;
+  bottom: -30px;
+  width: 92px;
+  height: 92px;
+  border: 1px solid rgba(0, 185, 90, 0.12);
+  border-radius: 50%;
+}
+
+.user-card h3 { font-size: 1.18rem; }
+.user-card-icon { color: var(--green); }
+
+.owner-header-actions { align-items: stretch; }
+.owner-header-action { background: rgba(255,255,255,0.82); box-shadow: 0 8px 18px rgba(0, 58, 38, 0.05); }
+
+#ownerSection > .user-header {
+  max-width: 1384px;
+  margin: 0 auto 18px;
+  padding: 10px 28px 22px;
+}
+
+#ownerSection > .user-panel,
+#ownerSection > .owner-summary-grid,
+#ownerSection > .owner-portal-grid,
+#ownerSection > .owner-reservations-panel {
+  max-width: 1384px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.owner-summary-card {
+  min-height: 126px;
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.owner-summary-card i { margin-bottom: 12px; }
+.owner-summary-card strong { display: block; margin-top: 6px; font-size: 1.55rem; }
+.owner-period-panel,
+.owner-reservations-panel,
+.owner-profile-panel { border-radius: 20px; }
+
+.owner-court-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(0, 77, 53, 0.1);
+  box-shadow: 0 14px 30px rgba(0, 58, 38, 0.07);
+}
+
+.owner-booking-row { background: rgba(255,255,255,0.72); border-color: rgba(0, 77, 53, 0.1); }
+.owner-period-stats > div { background: rgba(255,255,255,0.72); }
+
+/* Brand-led dark dashboard canvas */
+.user-section,
+#ownerSection {
+  color: #effff5;
+  background-color: #003b27;
+  background-image:
+    linear-gradient(135deg, rgba(0, 200, 83, 0.16), transparent 34%),
+    linear-gradient(315deg, rgba(0, 77, 53, 0.98), #00291c 72%);
+}
+
+.user-dashboard-main,
+#ownerSection > .user-header,
+#ownerSection > .user-panel,
+#ownerSection > .owner-summary-grid,
+#ownerSection > .owner-portal-grid,
+#ownerSection > .owner-reservations-panel {
+  color: var(--text);
+}
+
+#userSection .user-dashboard-main {
+  color: #ffffff;
+}
+
+#userSection .user-dashboard-main > .user-header,
+#userSection .user-dashboard-main > .user-header h2,
+#userSection .user-dashboard-main > .user-header .muted,
+#userSection .user-dashboard-main > .user-header .eyebrow {
+  color: #ffffff;
+}
+
+#userSection .user-sidebar,
+#userSection .user-sidebar-brand,
+#userSection .user-sidebar-note {
+  color: #ffffff;
+}
+
+.user-header,
+#ownerSection > .user-header {
+  border-bottom: 0;
+}
+
+.user-header .muted,
+#ownerSection > .user-header .muted { color: rgba(239,255,245,0.7); }
+
+.user-section .user-top-nav-bar {
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(0, 41, 28, 0.78);
+}
+
+.user-section .user-top-nav-bar button { color: rgba(239,255,245,0.72); }
+.user-section .user-top-nav-bar button:hover,
+.user-section .user-top-nav-bar button.active { background: rgba(0, 200, 83, 0.16); color: #9dffc0; }
+
+#ownerSection > .user-header .owner-header-action {
+  border-color: rgba(255,255,255,0.16);
+  background: rgba(0, 41, 28, 0.72);
+  color: #effff5;
+}
+
+#ownerSection > .user-header .owner-header-action strong {
+  background: rgba(0, 200, 83, 0.18);
+  color: #9dffc0;
+}
+
+#ownerSection > .user-header .owner-header-action i { color: #63e895; }
+
+#ownerSection > .user-header h2 {
+  color: #f4fff7;
+  font-size: clamp(1.55rem, 2.2vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+#ownerSection > .user-header .eyebrow { color: #7df0a3; }
+
+.user-section .user-panel,
+#ownerSection .user-panel,
+#ownerSection .owner-summary-card,
+#ownerSection .owner-court-card {
+  color: var(--text);
+}
+
+.user-section .user-panel .muted,
+#ownerSection .user-panel .muted,
+#ownerSection .owner-summary-card span,
+#ownerSection .owner-period-stats span,
+#ownerSection .owner-period-stats small {
+  color: #5b6861;
+}
+
+.user-section .panel__header h3,
+#ownerSection .panel__header h3 { color: #10251c; }
+
+.user-section .user-dashboard-main > .user-header .muted { color: rgba(239,255,245,0.76); }
+.user-section .user-dashboard-main > .user-header h2 { color: #f4fff7; }
+.user-section .user-dashboard-main > .user-header .eyebrow { color: #7df0a3; }
+
+/* User dashboard text contrast */
+#userSection .user-panel h3,
+#userSection .user-panel h4,
+#userSection .user-card h3,
+#userSection .owner-profile-identity strong,
+#userSection .owner-profile-details strong,
+#userSection .user-booking-item strong {
+  color: #10251c;
+  font-weight: 850;
+}
+
+#userSection .user-panel .eyebrow,
+#userSection .user-panel label,
+#userSection .user-card .mini-tag,
+#userSection .owner-profile-details span,
+#userSection .user-booking-item small,
+#userSection .user-tournament-description,
+#userSection .user-tournament-meta,
+#userSection .user-my-tournament-info,
+#userSection .user-my-tournament-description,
+#userSection .user-tournament-footer small,
+#userSection .user-notification p,
+#userSection .user-notification small {
+  color: #53635a;
+}
+
+#userSection .user-panel .eyebrow { color: #007a3d; font-weight: 850; }
+#userSection .user-card .mini-tag { color: #007a3d; font-weight: 850; }
+#userSection .user-card p { color: #53635a; line-height: 1.5; }
+
+#userSection .user-profile-form input,
+#userSection .user-profile-form select,
+#userSection .user-profile-form textarea,
+#userSection .user-booking-form input,
+#userSection .user-booking-form select,
+#userSection .user-booking-form textarea {
+  color: #10251c;
+  font-weight: 600;
+}
+
+#userSection input::placeholder,
+#userSection textarea::placeholder { color: #748179; opacity: 1; }
+
+#userSection .user-booking-item,
+#userSection .user-notification {
+  color: #10251c;
+}
+
+#userSection .user-notification strong,
+#userSection .user-booking-item .booking-price,
+#userSection .user-tournament-stats strong,
+#userSection .user-my-tournament-stats strong {
+  color: #007a3d;
+  font-weight: 850;
+}
+
+#userSection .user-tournament-card,
+#userSection .user-my-tournament-card,
+#userSection .user-court-card {
+  color: #10251c;
+}
+
+#userSection .user-tournament-header h4,
+#userSection .user-my-tournament-header h4 { color: #0b2a1d; }
+
+#userSection .user-tournament-meta i,
+#userSection .user-my-tournament-info i,
+#userSection .user-court-address i { color: #007a3d; }
+
+.tournament-registrations { display: grid; gap: 10px; margin-top: 22px; }
+.tournament-registrations h4 { margin: 0; }
+.tournament-registration { display: flex; justify-content: space-between; gap: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+.tournament-registration div { display: grid; gap: 4px; }
+.tournament-registration span { color: var(--muted); font-size: 0.78rem; }
+.tournament-registration-actions { display: flex; gap: 6px; margin-top: 6px; }
+.tournament-registration-actions .btn { padding: 6px 9px; font-size: 0.72rem; }
+
+/* Ground owner typography */
+#ownerSection .panel__header .eyebrow,
+#ownerSection .owner-summary-card span,
+#ownerSection .owner-period-stats span,
+#ownerSection .owner-period-stats small {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+#ownerSection .panel__header h3 {
+  font-size: 1.25rem;
+  letter-spacing: -0.015em;
+}
+
+#ownerSection .owner-profile-identity strong,
+#ownerSection .owner-court-card h3,
+#ownerSection .owner-booking-row strong {
+  color: #0d2b1e;
+  font-weight: 850;
+}
+
+#ownerSection .owner-profile-identity span,
+#ownerSection .owner-court-card p,
+#ownerSection .owner-booking-row small {
+  color: #53635a;
+  line-height: 1.5;
+}
+
+#ownerSection .owner-summary-card strong {
+  color: #063b27;
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+}
+
+#ownerSection .owner-period-stats strong {
+  color: #007a3d;
+  font-size: 1.3rem;
+  font-weight: 850;
+}
+
+#ownerSection .owner-court-card h3 {
+  font-size: 1.2rem;
+  letter-spacing: -0.015em;
+}
+
+#ownerSection .owner-court-form label {
+  color: #405249;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+#ownerSection .owner-court-form input,
+#ownerSection .owner-court-form select,
+#ownerSection .owner-court-form textarea {
+  color: #10251c;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+#ownerSection .owner-court-map-heading strong,
+#ownerSection .owner-court-map a { font-weight: 800; }
+#ownerSection .owner-booking-actions .status-badge { font-weight: 800; }
+
+/* User navigation uses one consistent hamburger pattern */
+#userSection .user-top-nav-bar { display: none; }
+#userSection .user-mobile-menu {
+  display: inline-grid;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  background: rgba(0, 41, 28, 0.74);
+  color: #f4fff7;
+  font-size: 1.05rem;
+}
+
+#userSection .user-mobile-menu:hover,
+#userSection .user-mobile-menu:focus-visible {
+  background: rgba(0, 200, 83, 0.2);
+  color: #9dffc0;
+  outline: 2px solid rgba(125, 240, 163, 0.72);
+  outline-offset: 2px;
+}
+
+#userSection .user-sidebar {
+  display: block;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 100;
+  width: min(310px, 84vw);
+  padding: 24px 18px;
+  overflow-y: auto;
+  transform: translateX(-105%);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(160deg, #004d35, #00291c);
+  box-shadow: 24px 0 54px rgba(0, 0, 0, 0.28);
+  transition: transform 0.24s ease;
+}
+
+#userSection .user-sidebar.open { transform: translateX(0); }
+#userSection .user-sidebar { border-bottom: 0; }
+#userSection .user-sidebar-nav { display: grid; }
+#userSection .user-nav-dropdown { display: none; }
+#userSection .user-sidebar-brand { color: #f4fff7; }
+#userSection .user-sidebar-nav button { color: rgba(239,255,245,0.74); }
+#userSection .user-sidebar-nav button:hover,
+#userSection .user-sidebar-nav button.active { background: rgba(0, 200, 83, 0.16); color: #9dffc0; }
+#userSection .user-sidebar-nav button[data-user-action="close-nav"] { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.14); border-radius: 0 0 10px 10px; color: #ffcf99; }
+#userSection .user-sidebar-nav button[data-user-action="close-nav"]:hover { background: rgba(255, 152, 0, 0.16); color: #ffe5c2; }
+#userSection .user-sidebar-note { color: rgba(239,255,245,0.66); border-top-color: rgba(255,255,255,0.14); }
+
+#userSection .user-header { align-items: center; }
+
+/* Consistent space between dashboard sections */
+.user-dashboard-main > section,
+.user-dashboard-main > .user-booking-layout,
+.user-dashboard-main > .user-grid,
+.user-dashboard-main > .user-dashboard-banner {
+  margin-bottom: 22px;
+}
+
+.user-dashboard-main > section:last-child,
+.user-dashboard-main > .user-booking-layout:last-child,
+.user-dashboard-main > .user-grid:last-child,
+.user-dashboard-main > .user-dashboard-banner:last-child {
+  margin-bottom: 0;
+}
+
+#ownerSection > .user-header,
+#ownerSection > .owner-summary-grid,
+#ownerSection > .user-panel,
+#ownerSection > .owner-portal-grid {
+  margin-bottom: 22px;
+}
+
+#ownerSection > .user-notifications-panel:last-child,
+#ownerSection > .owner-reservations-panel:last-of-type {
+  margin-bottom: 0;
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 14px 18px;
+  margin-top: 18px;
+}
+
+.detail-list div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(247,249,248,0.8);
+}
+
+.detail-list span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.detail-list strong {
+  font-size: 0.93rem;
+  line-height: 1.45;
+}
+
 .table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -1351,7 +2095,7 @@ tbody tr:hover {
 
 .status-badge.pending { background: rgba(255,152,0,0.12); color: var(--warning); }
 .status-badge.confirmed, .status-badge.paid, .status-badge.active, .status-badge.live { background: rgba(0,185,90,0.12); color: var(--green); }
-.status-badge.cancelled, .status-badge.failed { background: rgba(229,57,53,0.08); color: var(--danger); }
+.status-badge.cancelled, .status-badge.rejected, .status-badge.failed { background: rgba(229,57,53,0.08); color: var(--danger); }
 .status-badge.completed { background: rgba(33,150,243,0.12); color: var(--blue); }
 .status-badge.refunded { background: rgba(108,117,135,0.12); color: #6b7280; }
 .status-badge.inactive, .status-badge.disabled { background: rgba(107,117,111,0.12); color: var(--muted); }

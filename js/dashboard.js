@@ -119,10 +119,10 @@ window.FNAdminDashboard.setupCharts = function() {
   const bookingStatusChart = new Chart(bookingStatusCtx, {
     type: 'polarArea',
     data: {
-      labels: ['Confirmed', 'Pending', 'Cancelled', 'Completed'],
+      labels: ['Confirmed', 'Pending', 'Rejected', 'Cancelled', 'Completed'],
       datasets: [{
-        data: ['Confirmed', 'Pending', 'Cancelled', 'Completed'].map((status) => bookings.filter((booking) => String(booking.bookingStatus || '').toLowerCase() === status.toLowerCase()).length),
-        backgroundColor: ['#00B95A', '#FF9800', '#E53935', '#2196F3']
+        data: ['Confirmed', 'Pending', 'Rejected', 'Cancelled', 'Completed'].map((status) => bookings.filter((booking) => String(booking.bookingStatus || '').toLowerCase() === status.toLowerCase()).length),
+        backgroundColor: ['#00B95A', '#FF9800', '#E53935', '#B71C1C', '#2196F3']
       }]
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
