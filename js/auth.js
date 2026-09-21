@@ -231,6 +231,58 @@ window.FNAdminAuth.logout = function() {
 };
 
 window.FNAdminAuth.init = function() {
+  const installAppButtons = document.querySelectorAll('[data-install-app]');
+  let deferredInstallPrompt = window.FNAdminAuth.deferredInstallPrompt || null;
+  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const hideInstallButton = () => {
+    installAppButtons.forEach((button) => {
+      if (button.classList.contains('install-app-icon')) return;
+      button.hidden = true;
+      button.disabled = true;
+    });
+  };
+  if (isStandalone || window.navigator.standalone === true) hideInstallButton();
+  if (installAppButtons.length) {
+    const installApp = async () => {
+      if (isStandalone || window.navigator.standalone === true) {
+        window.FNAdminComponents.showToast('FUTSAL NEPAL is already installed.', 'info');
+        return;
+      }
+      if (!deferredInstallPrompt) {
+        window.FNAdminComponents.showToast('Use your browser menu to install this app.', 'info');
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      window.FNAdminAuth.deferredInstallPrompt = null;
+      if (choice.outcome === 'accepted') hideInstallButton();
+    };
+    installAppButtons.forEach((button) => {
+      button.hidden = false;
+      button.disabled = false;
+      if (button.dataset.installBound !== 'true') {
+        button.addEventListener('click', installApp);
+        button.dataset.installBound = 'true';
+      }
+    });
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      window.FNAdminAuth.deferredInstallPrompt = event;
+      installAppButtons.forEach((button) => {
+        button.hidden = false;
+        button.disabled = false;
+      });
+    });
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      window.FNAdminAuth.deferredInstallPrompt = null;
+      hideInstallButton();
+      window.FNAdminComponents.showToast('FUTSAL NEPAL installed successfully.', 'success');
+    });
+  }
+
   const authLoginForm = document.getElementById('authLoginForm');
   const authLoginEmail = document.getElementById('authLoginEmail');
   const authLoginPassword = document.getElementById('authLoginPassword');

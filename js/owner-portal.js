@@ -41,15 +41,21 @@ window.FNOwnerPortal.renderNotifications = function() {
 window.FNOwnerPortal.renderProfile = function(courts) {
   const identity = document.getElementById('ownerProfileIdentity');
   const details = document.getElementById('ownerProfileDetails');
+  const heroProfile = document.getElementById('ownerHeroProfile');
   const owner = window.FNAdminAuth.user || {};
-  if (!details) return;
+  if (!details && !heroProfile) return;
   const ownerName = owner.name || 'Court owner';
   const initials = ownerName.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase();
   const imageUrl = owner.photoURL || owner.photoUrl || '';
   if (identity) identity.innerHTML = (imageUrl ? '<img class="user-profile-image" src="' + imageUrl + '" alt="' + ownerName + ' profile" />' : '<div class="owner-profile-avatar">' + initials + '</div>') + '<div><strong>' + ownerName + '</strong><span>Venue account</span></div>';
-  details.innerHTML = '<div><span>Email address</span><strong>' + (owner.email || 'Not available') + '</strong></div>' +
+  if (details) details.innerHTML = '<div><span>Email address</span><strong>' + (owner.email || 'Not available') + '</strong></div>' +
     '<div><span>Account type</span><strong>' + (owner.role || 'Owner') + '</strong></div>' +
     '<div><span>Assigned courts</span><strong>' + courts.length + '</strong></div>';
+  const heroName = document.getElementById('ownerHeroName');
+  const displayName = document.getElementById('ownerDisplayName');
+  if (heroName) heroName.textContent = ownerName;
+  if (displayName) displayName.textContent = ownerName;
+  if (heroProfile) heroProfile.innerHTML = (imageUrl ? '<img class="user-profile-image" src="' + imageUrl + '" alt="' + ownerName + ' profile" />' : '<div class="owner-profile-avatar">' + initials + '</div>') + '<div class="portal-hero__profile-details"><strong>' + ownerName + '</strong><div class="portal-hero__profile-detail-list"><span><b>Email</b>' + (owner.email || 'Not available') + '</span><span><b>Account type</b>' + (owner.role || 'Ground owner') + '</span><span><b>Assigned courts</b>' + courts.length + '</span></div></div>';
   const form = document.getElementById('ownerProfileForm');
   if (form && form.dataset.profilePopulated !== 'true') {
     form.elements.name.value = owner.name || '';
@@ -107,7 +113,9 @@ window.FNOwnerPortal.renderHeaderActions = function(bookings) {
 window.FNOwnerPortal.initHeaderActions = function() {
   const actions = [
     ['ownerBookingRequestsBtn', 'ownerReservationsPanel'],
-    ['ownerNotificationsBtn', 'ownerNotificationsList']
+    ['ownerNotificationsBtn', 'ownerNotificationsList'],
+    ['ownerHeroBookingsBtn', 'ownerReservationsPanel'],
+    ['ownerHeroProfileBtn', 'ownerProfilePanel']
   ];
   actions.forEach(([buttonId, targetId]) => {
     const button = document.getElementById(buttonId);
@@ -180,9 +188,10 @@ window.FNOwnerPortal.render = function() {
   const ownerSection = document.getElementById('ownerSection');
   const ownerReservationsPanel = document.getElementById('ownerReservationsPanel');
   const ownerNotificationsPanel = ownerSection && ownerSection.querySelector('.user-notifications-panel');
+  const ownerHero = ownerSection && ownerSection.querySelector('.portal-hero');
   if (ownerSection && panel && ownerReservationsPanel) {
     ownerSection.insertBefore(ownerReservationsPanel, panel.nextSibling);
-    if (ownerNotificationsPanel) ownerSection.appendChild(ownerNotificationsPanel);
+    if (ownerNotificationsPanel && ownerHero) ownerSection.insertBefore(ownerNotificationsPanel, ownerHero.nextSibling);
   }
   this.renderNotifications();
   this.initProfileForm();

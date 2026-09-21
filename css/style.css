@@ -187,6 +187,43 @@ img { max-width: 100%; display: block; }
   font-size: 0.66rem;
 }
 
+.install-app-button {
+  display: inline-flex;
+  align-self: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0 auto;
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #004d35 0%, #00b95a 100%);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(0, 77, 53, 0.2);
+}
+
+.install-app-button i {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--green);
+  font-size: 0.68rem;
+}
+
+.install-app-button:hover { border-color: #fff; background: linear-gradient(135deg, #003b27 0%, #00c853 100%); transform: translateY(-1px); }
+.install-app-button[hidden] { display: none; }
+.user-header-actions { display: flex; align-items: center; gap: 8px; }
+.user-header-actions .install-app-button { margin: 0; }
+.install-app-icon { width: auto; min-height: 42px; justify-content: center; padding: 9px 12px; margin: 0; }
+.install-app-icon i { width: 24px; height: 24px; font-size: 0.78rem; }
+.install-app-icon span { display: inline; }
+.user-header-actions .install-app-icon,
+.owner-header-actions .install-app-icon { display: inline-flex !important; visibility: visible; }
+
 .demo-note {
   margin-top: 14px;
   text-align: center;
@@ -199,6 +236,10 @@ img { max-width: 100%; display: block; }
   padding: 0;
   background: var(--bg);
 }
+
+.user-back-to-top { position: fixed; right: 24px; bottom: 24px; z-index: 30; display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; background: var(--sidebar); color: #fff; box-shadow: 0 12px 24px rgba(0, 58, 38, 0.2); opacity: 0; pointer-events: none; transform: translateY(10px); transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease; }
+.user-back-to-top.is-visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.user-back-to-top:hover { background: var(--green); }
 
 #ownerSection { padding: 32px 24px; }
 
@@ -256,6 +297,61 @@ img { max-width: 100%; display: block; }
 .user-top-nav-bar button { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
 .user-top-nav-bar button:hover, .user-top-nav-bar button.active { background: var(--green-soft); color: var(--green); }
 .user-top-nav-bar i { font-size: 0.82rem; }
+
+.portal-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 28px;
+  align-items: center;
+  overflow: hidden;
+  min-height: 230px;
+  margin-bottom: 18px;
+  padding: 30px 32px;
+  border-radius: 24px;
+  background: linear-gradient(120deg, #003b27 0%, #006342 60%, #00a653 100%);
+  color: #fff;
+  box-shadow: 0 20px 38px rgba(0, 77, 53, 0.18);
+}
+
+.portal-hero::after {
+  content: '';
+  position: absolute;
+  right: -44px;
+  bottom: -92px;
+  width: 260px;
+  height: 260px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 50%;
+  box-shadow: 0 0 0 24px rgba(255,255,255,0.04), 0 0 0 48px rgba(255,255,255,0.03);
+}
+
+.portal-hero__copy,
+.portal-hero__profile { position: relative; z-index: 1; }
+.portal-hero__copy { max-width: 650px; }
+.portal-hero .eyebrow { color: rgba(255,255,255,0.68); }
+.portal-hero h1 { max-width: 620px; margin: 0 0 9px; color: #fff; font-size: clamp(1.8rem, 3vw, 2.65rem); line-height: 1.05; letter-spacing: -0.03em; }
+.portal-hero__copy > p:not(.eyebrow) { max-width: 560px; margin: 0; color: rgba(255,255,255,0.78); line-height: 1.55; }
+.portal-hero__actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }
+.portal-hero .btn-primary { background: #fff; color: var(--sidebar); }
+.portal-hero .btn-primary:hover { background: #e8f8ef; }
+.btn-ghost-light { border: 1px solid rgba(255,255,255,0.36); color: #fff; }
+.btn-ghost-light:hover { border-color: #fff; background: rgba(255,255,255,0.1); }
+.portal-hero__profile { display: grid; gap: 12px; justify-self: end; width: min(100%, 500px); padding: 16px; border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; background: rgba(0, 35, 24, 0.24); backdrop-filter: blur(8px); }
+.portal-hero__profile-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.portal-hero__profile .owner-profile-avatar,
+.portal-hero__profile .user-profile-image { flex-basis: 58px; width: 58px; height: 58px; }
+.portal-hero__profile-details { display: grid; min-width: 0; gap: 4px; }
+.portal-hero__profile-details strong { color: #fff; font-size: 1.03rem; overflow-wrap: anywhere; }
+.portal-hero__profile-detail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 8px 12px; margin-top: 4px; }
+.portal-hero__profile-detail-list span { display: grid; gap: 2px; color: rgba(255,255,255,0.78); font-size: 0.74rem; overflow-wrap: anywhere; }
+.portal-hero__profile-detail-list b { color: rgba(255,255,255,0.52); font-size: 0.63rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.portal-hero__edit-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 9px 12px; border: 1px solid rgba(255,255,255,0.25); border-radius: 10px; color: #fff; background: rgba(255,255,255,0.08); font-size: 0.78rem; font-weight: 800; }
+.portal-hero__edit-button:hover { background: rgba(255,255,255,0.16); }
+.portal-hero__profile-form { grid-template-columns: 1fr 1fr; margin-top: 0; padding-top: 14px; border-top-color: rgba(255,255,255,0.2); }
+.portal-hero__profile-form label { color: rgba(255,255,255,0.78); }
+.portal-hero__profile-form input { background: rgba(255,255,255,0.96); }
+.portal-hero__profile-form small { color: rgba(255,255,255,0.68); }
 
 .user-dashboard-banner {
   display: flex;

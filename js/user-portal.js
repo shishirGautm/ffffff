@@ -58,8 +58,9 @@ window.FNUserPortal.readImageFile = function(file) {
 window.FNUserPortal.renderProfile = function() {
   const identity = document.getElementById('userProfileIdentity');
   const details = document.getElementById('userProfileDetails');
+  const heroProfile = document.getElementById('userHeroProfile');
   const user = window.FNAdminAuth.user || {};
-  if (!identity || !details) return;
+  if (!identity && !details && !heroProfile) return;
   const profile = (window.FNAdmin.state.users || []).find((item) => item.id === user.uid || item.email === user.email) || user;
   const fallbackName = user.email ? user.email.split('@')[0].replace(/[._-]+/g, ' ') : 'player';
   const name = profile.name && profile.name !== profile.email ? profile.name : (user.name && user.name !== user.email ? user.name : fallbackName);
@@ -68,8 +69,11 @@ window.FNUserPortal.renderProfile = function() {
   const upcomingBookings = this.getUserBookings().filter((booking) => booking.date >= today && !['Cancelled', 'Rejected'].includes(booking.bookingStatus)).length;
   const imageUrl = profile.photoURL || profile.photoUrl || (typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? profile.avatar : '');
   const identityImage = imageUrl ? '<img class="user-profile-image" src="' + imageUrl + '" alt="' + name + ' profile" />' : '<div class="owner-profile-avatar">' + initials + '</div>';
-  identity.innerHTML = identityImage + '<div><strong>' + name + '</strong><span>Player account</span></div>';
-  details.innerHTML = '<div><span>Name</span><strong>' + name + '</strong></div><div><span>Age</span><strong>' + (profile.age || 'Not added') + '</strong></div><div><span>Contact</span><strong>' + (profile.phone || profile.contactNumber || 'Not added') + '</strong></div><div><span>Email address</span><strong>' + (profile.email || user.email || 'Not available') + '</strong></div><div><span>Account type</span><strong>' + (user.role || profile.role || 'User') + '</strong></div><div><span>Upcoming bookings</span><strong>' + upcomingBookings + '</strong></div>';
+  if (identity) identity.innerHTML = identityImage + '<div><strong>' + name + '</strong><span>Player account</span></div>';
+  if (details) details.innerHTML = '<div><span>Name</span><strong>' + name + '</strong></div><div><span>Age</span><strong>' + (profile.age || 'Not added') + '</strong></div><div><span>Contact</span><strong>' + (profile.phone || profile.contactNumber || 'Not added') + '</strong></div><div><span>Email address</span><strong>' + (profile.email || user.email || 'Not available') + '</strong></div><div><span>Account type</span><strong>' + (user.role || profile.role || 'User') + '</strong></div><div><span>Upcoming bookings</span><strong>' + upcomingBookings + '</strong></div>';
+  const heroName = document.getElementById('userHeroName');
+  if (heroName) heroName.textContent = name;
+  if (heroProfile) heroProfile.innerHTML = identityImage + '<div class="portal-hero__profile-details"><strong>' + name + '</strong><div class="portal-hero__profile-detail-list"><span><b>Email</b>' + (profile.email || user.email || 'Not available') + '</span><span><b>Age</b>' + (profile.age || 'Not added') + '</span><span><b>Contact</b>' + (profile.phone || profile.contactNumber || 'Not added') + '</span><span><b>Location</b>' + (profile.location || 'Not added') + '</span><span><b>Account type</b>' + (user.role || profile.role || 'User') + '</span><span><b>Bookings</b>' + upcomingBookings + ' upcoming</span></div></div>';
   const profileForm = document.getElementById('userProfileForm');
   if (profileForm && (profileForm.dataset.profilePopulated !== 'true' || profileForm.classList.contains('hidden'))) {
     profileForm.elements.name.value = name;
@@ -118,21 +122,18 @@ window.FNUserPortal.updateTimeSlots = function() {
     const endTime = this.toTime(end);
     const option = document.createElement('option');
     const slotKey = date + ' | ' + startTime + ' - ' + endTime;
-    const matchingBooking = (window.FNAdmin.state.bookings || []).find((item) => {
-      const status = String(item.bookingStatus || '').toLowerCase();
-      return status === 'confirmed'
-        && item.date === date
-        && ((item.courtId && item.courtId === (selectedCourt && selectedCourt.id)) || item.court === (selectedCourt && selectedCourt.name))
-        && this.toMinutes(startTime) < this.toMinutes(item.endTime)
-        && this.toMinutes(item.startTime) < this.toMinutes(endTime);
-    });
+    const matchingBooking = (window.FNAdmin.state.bookings || []).find((item) => window.FNAdmin.isBookingActive(item)
+      && item.date === date
+      && ((item.courtId && item.courtId === (selectedCourt && selectedCourt.id)) || item.court === (selectedCourt && selectedCourt.name))
+      && this.toMinutes(startTime) < this.toMinutes(item.endTime)
+      && this.toMinutes(item.startTime) < this.toMinutes(endTime));
     const booked = !!matchingBooking;
     const blocked = blockedSlots.includes(slotKey);
     option.value = startTime + '|' + endTime;
-    const bookingStatus = matchingBooking ? 'confirmed' : '';
-    const slotLabel = bookingStatus === 'confirmed' ? 'Booked' : blocked ? 'Unavailable' : 'Available';
+    const bookingStatus = matchingBooking ? String(matchingBooking.bookingStatus || '') : '';
+    const slotLabel = blocked ? 'Unavailable' : bookingStatus || 'Available';
     option.textContent = this.toTimeLabel(startTime) + ' - ' + this.toTimeLabel(endTime) + ' - ' + slotLabel;
-    option.dataset.availability = bookingStatus === 'confirmed' ? 'booked' : (blocked ? 'unavailable' : 'available');
+    option.dataset.availability = blocked ? 'unavailable' : bookingStatus.toLowerCase() || 'available';
     option.disabled = booked || blocked;
     timeSelect.appendChild(option);
   }
@@ -531,6 +532,14 @@ window.FNUserPortal.init = function() {
   const userMain = document.getElementById('userDashboardTop');
   const userSidebar = document.querySelector('.user-sidebar');
   const userMobileMenu = document.getElementById('userMobileMenuBtn');
+  const backToTopButton = document.getElementById('userBackToTop');
+  if (backToTopButton && backToTopButton.dataset.fnInitialized !== 'true') {
+    const updateBackToTopVisibility = () => backToTopButton.classList.toggle('is-visible', window.scrollY > 360);
+    backToTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
+    updateBackToTopVisibility();
+    backToTopButton.dataset.fnInitialized = 'true';
+  }
   if (userMobileMenu && userSidebar && userMobileMenu.dataset.fnInitialized !== 'true') {
     userMobileMenu.addEventListener('click', () => {
       const isOpen = userSidebar.classList.toggle('open');
@@ -541,8 +550,8 @@ window.FNUserPortal.init = function() {
     userMobileMenu.dataset.fnInitialized = 'true';
   }
   const userNotificationsPanel = document.getElementById('userNotificationsPanel');
-  const userHeader = userMain && userMain.querySelector('.user-header');
-  if (userMain && userNotificationsPanel && userHeader) userMain.insertBefore(userNotificationsPanel, userHeader.nextSibling);
+  const userHero = userMain && userMain.querySelector('.portal-hero');
+  if (userMain && userNotificationsPanel && userHero) userMain.insertBefore(userNotificationsPanel, userHero.nextSibling);
 
   if (venueSearch && venueSearch.dataset.fnInitialized !== 'true') {
     venueSearch.addEventListener('input', () => this.renderCourtDirectory(venueSearch.value));
@@ -739,6 +748,7 @@ window.FNUserPortal.init = function() {
       paymentMethod: document.getElementById('userBookingPayment').value,
       paymentStatus: 'Pending',
       bookingStatus: 'Pending',
+      expiresAt: Date.now() + (10 * 60 * 1000),
       createdAt: today
     };
     if (submitButton) {

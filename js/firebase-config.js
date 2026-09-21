@@ -120,6 +120,12 @@ window.FNAdmin.hasBookingConflict = function(booking, excludeBookingId) {
   });
 };
 
+window.FNAdmin.isBookingActive = function(booking) {
+  const status = String(booking && booking.bookingStatus || '').toLowerCase();
+  if (!['pending', 'confirmed'].includes(status)) return false;
+  return status !== 'pending' || !booking.expiresAt || Number(booking.expiresAt) > Date.now();
+};
+
 window.FNAdmin.syncBookings = function(booking) {
   if (this.demoMode) {
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking || null }));
@@ -207,15 +213,16 @@ window.FNAdmin.createBooking = function(booking) {
     const slotDate = String(slotData.date || booking.date);
     const today = new Date().toISOString().slice(0, 10);
     const isExpired = slotDate < today;
-    const isAvailable = ['available', 'pending', 'cancelled', 'released', 'rejected', 'completed'].includes(slotStatus)
-      || ['available', 'pending', 'cancelled', 'rejected', 'completed'].includes(bookingStatus);
+    const lockExpired = bookingStatus === 'pending' && Number(slotData.expiresAt || 0) > 0 && Number(slotData.expiresAt) <= Date.now();
+    const isAvailable = isExpired || lockExpired || ['available', 'cancelled', 'released', 'rejected', 'completed'].includes(slotStatus)
+      || ['available', 'cancelled', 'rejected', 'completed'].includes(bookingStatus);
     if (slot.exists && !isExpired && !isAvailable) {
       const conflictError = new Error('Already booked. Please choose another time.');
       conflictError.code = 'already-booked';
       conflictError.slotStatus = slotData.bookingStatus || slotData.status || 'Active';
       throw conflictError;
     }
-    transaction.set(slotRef, { bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, date: booking.date, startTime: booking.startTime, endTime: booking.endTime, status: booking.bookingStatus, bookingStatus: booking.bookingStatus });
+    transaction.set(slotRef, { bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, date: booking.date, startTime: booking.startTime, endTime: booking.endTime, status: booking.bookingStatus, bookingStatus: booking.bookingStatus, expiresAt: booking.expiresAt || null });
     transaction.set(bookingRef, booking);
     transaction.set(paymentRef, payment);
     transaction.set(notificationRef, notification);

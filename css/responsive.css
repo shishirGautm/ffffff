@@ -58,11 +58,15 @@
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .hero-card,
-  .user-dashboard-banner { align-items: flex-start; flex-wrap: wrap; }
+  .user-dashboard-banner,
+  .portal-hero { align-items: flex-start; flex-wrap: wrap; }
 
   .hero-card > div:first-child,
   .hero-card__meta,
   .user-dashboard-banner > div:first-child { min-width: min(100%, 420px); }
+
+  .portal-hero { grid-template-columns: 1fr; }
+  .portal-hero__profile { justify-self: start; width: min(100%, 520px); }
 
   .hero-card__meta {
     width: 100%;
@@ -158,6 +162,9 @@
   .topbar__actions .user-menu { display: none; }
   .topbar__actions .icon-btn,
   .topbar__actions .theme-toggle { flex: 0 0 40px; }
+  .topbar__actions > .install-app-button { flex: 0 0 40px; width: 40px; height: 40px; margin: 0; padding: 0; justify-content: center; }
+  .topbar__actions > .install-app-button span { display: none; }
+  .topbar__actions > .install-app-button i { width: 24px; height: 24px; }
 
   .content-wrap { padding: 16px 14px 28px; }
   .section-toolbar,
@@ -199,13 +206,20 @@
   #ownerSection .user-header { flex-direction: column; }
   .user-header { gap: 14px; margin-bottom: 14px; }
   .user-header .btn { flex: 0 0 auto; }
+  .user-header-actions { width: 100%; justify-content: flex-end; }
   .owner-header-actions { width: 100%; justify-content: stretch; }
   .owner-header-action { flex: 1; justify-content: center; }
+  .owner-header-actions .install-app-button { flex: 0 0 auto; }
   .owner-header-actions > .btn { flex: 0 0 auto; }
   .user-header h2 { font-size: 1.35rem; }
   .user-top-nav-bar { margin-right: -2px; margin-left: -2px; }
   .user-top-nav-bar { grid-template-columns: 1fr 1fr; }
   .user-dashboard-banner { padding: 16px; border-radius: 16px; }
+  .portal-hero { min-height: 0; padding: 22px 18px; border-radius: 18px; }
+  .portal-hero h1 { font-size: 1.75rem; }
+  .portal-hero__actions { flex-direction: column; }
+  .portal-hero__actions .btn { width: 100%; }
+  .portal-hero__profile-detail-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .user-dashboard-actions { flex-direction: column; }
   .user-dashboard-actions .btn { width: 100%; }
   .user-profile-form,
@@ -272,8 +286,16 @@
   .mobile-toggle { width: 38px; height: 38px; }
   .user-top-nav-bar button { padding: 8px 10px; font-size: 0.74rem; }
   .user-panel { padding: 15px 13px; }
+  .user-back-to-top { right: 14px; bottom: 14px; width: 42px; height: 42px; }
   .btn { padding: 0.72rem 0.9rem; }
   .owner-header-action { min-width: 44px; padding: 9px 10px; }
   .owner-header-action span { display: none; }
+  .user-header-actions .install-app-icon,
+  .owner-header-actions .install-app-icon { width: 40px; height: 40px; min-height: 40px; padding: 0; }
+  .user-header-actions .install-app-icon span,
+  .owner-header-actions .install-app-icon span { display: none; }
+  .user-header-actions .install-app-icon i,
+  .owner-header-actions .install-app-icon i { width: 23px; height: 23px; }
+  .portal-hero__profile-detail-list { grid-template-columns: 1fr; }
   .owner-notification-menu { flex: 0 0 auto; }
 }

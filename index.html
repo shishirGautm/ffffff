@@ -38,6 +38,7 @@
     <div id="authScreen" class="auth-screen">
       <div class="auth-card">
         <div class="brand-badge">FUTSAL NEPAL</div>
+        <button class="install-app-button" id="installAppBtn" data-install-app type="button"><i class="fa-solid fa-download"></i><span>Install app</span></button>
         <p class="eyebrow">Access portal</p>
         <h2>Welcome back</h2>
         <p class="muted">Choose your access type and sign in to continue.</p>
@@ -110,29 +111,39 @@
             <button type="button" data-user-scroll="userMyTournamentsPanel"><i class="fa-solid fa-list-check"></i><span>My tournaments</span></button>
           </nav>
           <header class="user-header">
-        <button class="user-mobile-menu" id="userMobileMenuBtn" type="button" aria-label="Open navigation" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
-        <div>
-          <p class="eyebrow text-green">FUTSAL NEPAL</p>
-          <h2><span id="userGreetingText">Good morning</span>, <span id="userDisplayName">player</span></h2>
-          <p class="muted">Find a pitch, manage your bookings, and keep your next match in sight.</p>
-        </div>
-        <button class="btn btn-secondary" id="userLogoutBtn">Logout</button>
-          </header>
-
-          <section class="user-panel user-profile-panel" id="userProfilePanel">
-            <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Your profile</h3></div><button class="icon-button" id="userProfileEditBtn" type="button" aria-label="Edit profile" title="Edit profile"><i class="fa-solid fa-pen"></i></button></div>
-            <div class="owner-profile-content">
-              <div id="userProfileIdentity" class="owner-profile-identity"></div>
-              <div id="userProfileDetails" class="owner-profile-details"></div>
+            <button class="user-mobile-menu" id="userMobileMenuBtn" type="button" aria-label="Open navigation" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
+            <div>
+              <p class="eyebrow text-green">FUTSAL NEPAL</p>
+              <h2><span id="userGreetingText">Good morning</span>, <span id="userDisplayName">player</span></h2>
+              <p class="muted">Find a pitch, manage your bookings, and keep your next match in sight.</p>
             </div>
-            <form id="userProfileForm" class="user-profile-form hidden">
-              <label>Name<input name="name" type="text" required /></label>
-              <label>Age<input name="age" type="number" min="1" max="120" /></label>
-              <label>Contact number<input name="phone" type="tel" placeholder="+977-98XXXXXXXX" /></label>
-              <label>Location<input name="location" type="text" placeholder="Kathmandu" /></label>
-              <label class="user-profile-field-wide">Profile image<input name="photoFile" type="file" accept="image/jpeg,image/png" /><small class="muted">JPG or PNG, up to 5 MB</small></label>
-              <button class="btn btn-primary" type="submit"><i class="fa-solid fa-user-pen"></i> Save profile</button>
-            </form>
+            <div class="user-header-actions">
+              <button class="install-app-button install-app-icon" data-install-app type="button" aria-label="Install app" title="Install app"><i class="fa-solid fa-download"></i><span>Install app</span></button>
+              <button class="btn btn-secondary" id="userLogoutBtn" type="button">Logout</button>
+            </div>
+          </header>
+          <section class="portal-hero user-portal-hero" id="userProfilePanel" aria-labelledby="userHeroTitle">
+            <div class="portal-hero__copy">
+              <p class="eyebrow">Player dashboard</p>
+              <h1 id="userHeroTitle">Your next match starts here.</h1>
+              <p>Welcome back, <strong id="userHeroName">player</strong>. Find a court, manage your bookings, and stay ready to play.</p>
+              <div class="portal-hero__actions">
+                <button class="btn btn-primary" type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-location-dot"></i> Find a futsal</button>
+                <button class="btn btn-ghost-light" type="button" data-user-scroll="userProfilePanel"><i class="fa-solid fa-user"></i> View profile</button>
+              </div>
+            </div>
+            <div class="portal-hero__profile">
+              <div class="portal-hero__profile-identity" id="userHeroProfile"></div>
+              <button class="portal-hero__edit-button" id="userProfileEditBtn" type="button" aria-label="Edit profile" title="Edit profile"><i class="fa-solid fa-pen"></i><span>Edit profile</span></button>
+              <form id="userProfileForm" class="user-profile-form portal-hero__profile-form hidden">
+                <label>Name<input name="name" type="text" required /></label>
+                <label>Age<input name="age" type="number" min="1" max="120" /></label>
+                <label>Contact number<input name="phone" type="tel" placeholder="+977-98XXXXXXXX" /></label>
+                <label>Location<input name="location" type="text" placeholder="Kathmandu" /></label>
+                <label class="user-profile-field-wide">Profile image<input name="photoFile" type="file" accept="image/jpeg,image/png" /><small>JPG or PNG, up to 5 MB</small></label>
+                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-user-pen"></i> Save profile</button>
+              </form>
+            </div>
           </section>
 
           <section class="user-dashboard-banner">
@@ -237,13 +248,14 @@
           </section>
         </main>
       </div>
+      <button class="user-back-to-top" id="userBackToTop" type="button" aria-label="Back to top" title="Back to top"><i class="fa-solid fa-arrow-up"></i></button>
     </div>
 
     <div id="ownerSection" class="user-section hidden">
       <header class="user-header">
         <div>
           <p class="eyebrow text-green">FUTSAL NEPAL</p>
-          <h2><span id="ownerGreetingText">Good morning</span>, Owner Portal</h2>
+          <h2><span id="ownerGreetingText">Good morning</span>, <span id="ownerDisplayName">court owner</span></h2>
           <p class="muted">Manage your court availability, pricing and bookings.</p>
         </div>
         <div class="owner-header-actions">
@@ -260,20 +272,29 @@
               <button type="button" class="owner-notification-dropdown__footer" id="viewOwnerNotificationsBtn">View all notifications</button>
             </div>
           </div>
+          <button class="install-app-button install-app-icon" data-install-app type="button" aria-label="Install app" title="Install app"><i class="fa-solid fa-download"></i><span>Install app</span></button>
           <button class="btn btn-secondary" id="ownerLogoutBtn" type="button">Logout</button>
         </div>
       </header>
-      <section class="user-panel owner-profile-panel" id="ownerProfilePanel">
-        <div class="panel__header"><div><p class="eyebrow text-green">Account</p><h3>Ground owner profile</h3></div><button class="icon-button" id="ownerProfileEditBtn" type="button" aria-label="Edit profile" title="Edit profile"><i class="fa-solid fa-pen"></i></button></div>
-        <div class="owner-profile-content">
-          <div id="ownerProfileIdentity" class="owner-profile-identity"></div>
-          <div id="ownerProfileDetails" class="owner-profile-details"></div>
+      <section class="portal-hero owner-portal-hero" id="ownerProfilePanel" aria-labelledby="ownerHeroTitle">
+        <div class="portal-hero__copy">
+          <p class="eyebrow">Ground owner dashboard</p>
+          <h1 id="ownerHeroTitle">Run your ground with clarity.</h1>
+          <p>Welcome back, <strong id="ownerHeroName">court owner</strong>. Keep your courts, bookings, and players moving.</p>
+          <div class="portal-hero__actions">
+            <button class="btn btn-primary" type="button" id="ownerHeroBookingsBtn"><i class="fa-regular fa-calendar-check"></i> View bookings</button>
+            <button class="btn btn-ghost-light" type="button" id="ownerHeroProfileBtn"><i class="fa-solid fa-user"></i> View profile</button>
+          </div>
         </div>
-        <form id="ownerProfileForm" class="user-profile-form hidden">
-          <label>Name<input name="name" type="text" required /></label>
-          <label>Profile image<input name="photoFile" type="file" accept="image/jpeg,image/png" /><small class="muted">JPG or PNG, up to 5 MB</small></label>
-          <button class="btn btn-primary" type="submit"><i class="fa-solid fa-user-pen"></i> Save profile</button>
-        </form>
+        <div class="portal-hero__profile">
+          <div class="portal-hero__profile-identity" id="ownerHeroProfile"></div>
+          <button class="portal-hero__edit-button" id="ownerProfileEditBtn" type="button" aria-label="Edit profile" title="Edit profile"><i class="fa-solid fa-pen"></i><span>Edit profile</span></button>
+          <form id="ownerProfileForm" class="user-profile-form portal-hero__profile-form hidden">
+            <label>Name<input name="name" type="text" required /></label>
+            <label>Profile image<input name="photoFile" type="file" accept="image/jpeg,image/png" /><small>JPG or PNG, up to 5 MB</small></label>
+            <button class="btn btn-primary" type="submit"><i class="fa-solid fa-user-pen"></i> Save profile</button>
+          </form>
+        </div>
       </section>
       <section class="owner-summary-grid" id="ownerDashboardSummary"></section>
       <section class="user-panel owner-period-panel">
@@ -361,6 +382,7 @@
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
               <i class="fa-solid fa-moon"></i>
             </button>
+            <button class="install-app-button" data-install-app type="button"><i class="fa-solid fa-download"></i><span>Install app</span></button>
             <div class="user-menu">
               <div class="avatar-mini">AN</div>
               <div>
