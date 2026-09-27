@@ -58,8 +58,15 @@ window.FNAdminDashboard.setupCharts = function() {
 
   if (!bookingCtx || !revenueCtx || !userGrowthCtx || !bookingStatusCtx) return;
 
+  const chartCanvases = [bookingCtx, revenueCtx, userGrowthCtx, bookingStatusCtx];
   if (window.FNAdmin.dashboardCharts) {
     Object.values(window.FNAdmin.dashboardCharts).forEach((chart) => chart.destroy());
+  }
+  if (typeof Chart.getChart === 'function') {
+    chartCanvases.forEach((canvas) => {
+      const existingChart = Chart.getChart(canvas);
+      if (existingChart) existingChart.destroy();
+    });
   }
 
   const bookings = window.FNAdmin.state.bookings || [];
@@ -145,19 +152,18 @@ window.FNAdminDashboard.setupCharts = function() {
 
     if (!items.length) {
       popularCourtsList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-futbol"></i><h3>No bookings yet</h3><p>Popular courts will appear here once bookings are created.</p></div>';
-      return;
-    }
-
-    popularCourtsList.innerHTML = items.map((court, index) => `
-      <div class="rank-item">
-        <span class="rank-number">${index + 1}</span>
-        <div>
-          <strong>${court.name}</strong>
-          <small>${court.bookings} bookings</small>
+    } else {
+      popularCourtsList.innerHTML = items.map((court, index) => `
+        <div class="rank-item">
+          <span class="rank-number">${index + 1}</span>
+          <div>
+            <strong>${court.name}</strong>
+            <small>${court.bookings} bookings</small>
+          </div>
+          <strong>NPR ${court.revenue.toLocaleString()}</strong>
         </div>
-        <strong>NPR ${court.revenue.toLocaleString()}</strong>
-      </div>
-    `).join('');
+      `).join('');
+    }
   }
 
   window.FNAdmin.dashboardCharts = { bookingChart, revenueChart, userGrowthChart, bookingStatusChart };

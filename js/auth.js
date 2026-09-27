@@ -1,6 +1,29 @@
 window.FNAdminAuth = window.FNAdminAuth || {};
 
 window.FNAdminAuth.user = null;
+window.FNAdminAuth.loadingOperations = 0;
+
+window.FNAdminAuth.setLoading = function(message) {
+  const loading = document.getElementById('authLoginLoading');
+  if (!loading) return;
+  this.loadingOperations += 1;
+  const label = loading.querySelector('span:last-child');
+  if (label) label.textContent = message;
+  loading.hidden = false;
+};
+
+window.FNAdminAuth.updateLoading = function(message) {
+  const loading = document.getElementById('authLoginLoading');
+  const label = loading && loading.querySelector('span:last-child');
+  if (label) label.textContent = message;
+};
+
+window.FNAdminAuth.clearLoading = function() {
+  this.loadingOperations = Math.max(0, this.loadingOperations - 1);
+  if (this.loadingOperations > 0) return;
+  const loading = document.getElementById('authLoginLoading');
+  if (loading) loading.hidden = true;
+};
 
 window.FNAdminAuth.isAuthenticated = function() {
   return !!this.user;
@@ -77,6 +100,7 @@ window.FNAdminAuth.login = function(email, password, role = 'admin') {
   const account = demoAccounts[role] || demoAccounts.admin;
   if (email === account.email && password === account.password) {
     window.FNAdmin.demoMode = true;
+    window.FNAdmin.state = window.FNAdmin.demoState;
     this.setUser({ uid: 'demo-' + account.displayRole.toLowerCase(), email, name: account.name, role: account.displayRole });
     if (!window.FNAdmin.state) window.FNAdmin.state = {};
     window.FNAdmin.state.bookings = window.FNAdmin.state.bookings || [];
@@ -99,7 +123,11 @@ window.FNAdminAuth.login = function(email, password, role = 'admin') {
         this.setUser({ uid, email, name: profile.name, role: profile.role });
         window.FNAdmin.subscribeToBookings();
         const profileWrite = profile.role === 'User' ? window.FNAdminData.save('users', uid, { id: uid, email, name: profile.name, updatedAt: new Date().toISOString() }) : Promise.resolve();
-        return profileWrite.then(() => window.FNAdminData.loadState(profile.role)).catch(() => Promise.resolve(true)).then(() => {
+        return profileWrite.then(() => window.FNAdminData.loadState(profile.role)).catch((error) => {
+          console.error('Unable to load Firebase collections after login:', error);
+          window.FNAdminComponents.showToast('Some Firebase data could not be loaded. Check your connection and permissions.', 'error');
+          return true;
+        }).then(() => {
           window.FNAdminData.subscribeState(profile.role);
           window.FNAdmin.subscribeToBookings();
           window.FNAdminComponents.showToast('Welcome back, ' + profile.name + '.', 'success');
@@ -109,7 +137,11 @@ window.FNAdminAuth.login = function(email, password, role = 'admin') {
         if (error && error.code === 'permission-denied') {
           const fallbackRole = (role && role.toLowerCase() === 'owner') ? 'Owner' : ((role && role.toLowerCase() === 'admin') ? 'Admin' : 'User');
           this.setUser({ uid: credential.user.uid, email, name: credential.user.displayName || email, role: fallbackRole });
-          return true;
+          return window.FNAdminData.loadState(fallbackRole).then(() => {
+            window.FNAdminData.subscribeState(fallbackRole);
+            window.FNAdmin.subscribeToBookings();
+            return true;
+          });
         }
         throw error;
       });
@@ -215,6 +247,7 @@ window.FNAdminAuth.register = function(name, email, password, role) {
 window.FNAdminAuth.logout = function() {
   const hadDemoMode = !!(window.FNAdmin && window.FNAdmin.demoMode);
   if (window.FNAdmin) window.FNAdmin.demoMode = false;
+  if (window.FNAdmin && window.FNAdmin.demoState) window.FNAdmin.state = window.FNAdmin.demoState;
   if (window.FNAdmin && window.FNAdmin.stopBookingSlotSubscription) window.FNAdmin.stopBookingSlotSubscription();
   if (!hadDemoMode && window.firebase && firebase.auth) firebase.auth().signOut();
   if (window.FNAdmin.listeners) {
@@ -256,21 +289,49 @@ window.FNAdminAuth.init = function() {
   if (authLoginForm) {
     authLoginForm.addEventListener('submit', function(event) {
       event.preventDefault();
+      if (authLoginForm.dataset.loginInProgress === 'true') return;
+
       const email = document.getElementById('authLoginEmail').value.trim();
       const password = document.getElementById('authLoginPassword').value.trim();
       const role = hiddenRoleInput ? hiddenRoleInput.value : 'admin';
-      window.FNAdminAuth.login(email, password, role).then((result) => { if (result) window.FNAdminApp.renderAll(); });
+      const submitButton = authLoginForm.querySelector('button[type="submit"]');
+      const roleButtons = document.querySelectorAll('.access-btn');
+      authLoginForm.dataset.loginInProgress = 'true';
+      authLoginForm.setAttribute('aria-busy', 'true');
+      window.FNAdminAuth.setLoading('Logging in...');
+      if (submitButton) submitButton.disabled = true;
+      roleButtons.forEach((button) => { button.disabled = true; });
+
+      window.FNAdminAuth.login(email, password, role).then((result) => {
+        if (result) window.FNAdminApp.renderAll();
+      }).catch((error) => {
+        console.error('Login flow failed:', error);
+        window.FNAdminComponents.showToast('Unable to complete login. Please try again.', 'error');
+      }).finally(() => {
+        authLoginForm.dataset.loginInProgress = 'false';
+        authLoginForm.removeAttribute('aria-busy');
+        window.FNAdminAuth.clearLoading();
+        if (submitButton) submitButton.disabled = false;
+        roleButtons.forEach((button) => { button.disabled = false; });
+      });
     });
   }
 
   const googleLoginBtn = document.getElementById('googleLoginBtn');
-  if (googleLoginBtn) googleLoginBtn.addEventListener('click', () => window.FNAdminAuth.loginWithGoogle());
+  if (googleLoginBtn) googleLoginBtn.addEventListener('click', () => {
+    window.FNAdminAuth.setLoading('Signing in with Google...');
+    window.FNAdminAuth.loginWithGoogle().finally(() => window.FNAdminAuth.clearLoading());
+  });
   const googleRegisterBtn = document.getElementById('googleRegisterBtn');
-  if (googleRegisterBtn) googleRegisterBtn.addEventListener('click', () => window.FNAdminAuth.registerWithGoogle(document.getElementById('registerRole').value));
+  if (googleRegisterBtn) googleRegisterBtn.addEventListener('click', () => {
+    window.FNAdminAuth.setLoading('Creating your account...');
+    window.FNAdminAuth.registerWithGoogle(document.getElementById('registerRole').value).finally(() => window.FNAdminAuth.clearLoading());
+  });
 
   const loginForm = document.getElementById('authLoginForm');
   const registerForm = document.getElementById('registerForm');
   const showRegisterBtn = document.getElementById('showRegisterBtn');
+  const registerPrompt = document.getElementById('authRegisterPrompt');
   const showLoginBtn = document.getElementById('showLoginBtn');
   const toggleRegistration = (showRegistration) => {
     if (loginForm) {
@@ -281,9 +342,9 @@ window.FNAdminAuth.init = function() {
       registerForm.classList.toggle('hidden', !showRegistration);
       registerForm.hidden = !showRegistration;
     }
-    if (showRegisterBtn) {
-      showRegisterBtn.classList.toggle('hidden', showRegistration);
-      showRegisterBtn.hidden = showRegistration;
+    if (registerPrompt) {
+      registerPrompt.classList.toggle('hidden', showRegistration);
+      registerPrompt.hidden = showRegistration;
     }
   };
   toggleRegistration(false);
@@ -291,12 +352,26 @@ window.FNAdminAuth.init = function() {
   if (showLoginBtn) showLoginBtn.addEventListener('click', () => toggleRegistration(false));
   if (registerForm) registerForm.addEventListener('submit', (event) => {
     event.preventDefault();
+    if (registerForm.dataset.registerInProgress === 'true') return;
+    const submitButton = registerForm.querySelector('button[type="submit"]');
+    registerForm.dataset.registerInProgress = 'true';
+    registerForm.setAttribute('aria-busy', 'true');
+    if (submitButton) submitButton.disabled = true;
+    window.FNAdminAuth.setLoading('Creating your account...');
     window.FNAdminAuth.register(
       document.getElementById('registerName').value.trim(),
       document.getElementById('registerEmail').value.trim(),
       document.getElementById('registerPassword').value,
       document.getElementById('registerRole').value
-    );
+    ).catch((error) => {
+      console.error('Registration flow failed:', error);
+      window.FNAdminComponents.showToast('Unable to complete registration. Please try again.', 'error');
+    }).finally(() => {
+      registerForm.dataset.registerInProgress = 'false';
+      registerForm.removeAttribute('aria-busy');
+      if (submitButton) submitButton.disabled = false;
+      window.FNAdminAuth.clearLoading();
+    });
   });
 
   const logoutBtn = document.getElementById('logoutBtn');
@@ -311,15 +386,6 @@ window.FNAdminAuth.init = function() {
 
   const ownerLogoutBtn = document.getElementById('ownerLogoutBtn');
   if (ownerLogoutBtn) ownerLogoutBtn.addEventListener('click', () => window.FNAdminAuth.logout());
-
-  const themeToggle = document.getElementById('themeToggle');
-  if (themeToggle) {
-    themeToggle.addEventListener('click', function() {
-      document.body.classList.toggle('dark-mode');
-      const icon = this.querySelector('i');
-      icon.className = document.body.classList.contains('dark-mode') ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-    });
-  }
 
   const mobileToggle = document.getElementById('mobileToggle');
   const sidebar = document.getElementById('sidebar');
@@ -351,11 +417,17 @@ window.FNAdminAuth.init = function() {
         return;
       }
       if (this.user && this.user.uid === firebaseUser.uid) return;
+      this.setLoading('Loading your account...');
       const fallbackProfile = { uid: firebaseUser.uid, email: firebaseUser.email, name: firebaseUser.displayName || firebaseUser.email || 'User', role: 'User' };
       this.resolveFirebaseProfile(firebaseUser).then((profile) => {
         const resolvedProfile = profile || fallbackProfile;
         this.setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: resolvedProfile.name, role: resolvedProfile.role });
-        return window.FNAdminData.loadState(resolvedProfile.role).catch(() => Promise.resolve(true)).then(() => {
+        this.updateLoading('Loading your dashboard...');
+        return window.FNAdminData.loadState(resolvedProfile.role).catch((error) => {
+          console.error('Unable to restore live Firebase data:', error);
+          window.FNAdminComponents.showToast('Some Firebase data could not be loaded. Check your connection and permissions.', 'error');
+          return true;
+        }).then(() => {
           window.FNAdminData.subscribeState(resolvedProfile.role);
           window.FNAdmin.subscribeToBookings();
           window.FNAdminApp.renderAll();
@@ -363,12 +435,12 @@ window.FNAdminAuth.init = function() {
       }).catch((error) => {
         if (error && error.code === 'permission-denied') {
           this.setUser(fallbackProfile);
-          window.FNAdminData.loadState('User').catch(() => Promise.resolve(true));
-          window.FNAdminApp.renderAll();
-          return;
+          return window.FNAdminData.loadState('User').catch(() => Promise.resolve(true)).then(() => {
+            window.FNAdminApp.renderAll();
+          });
         }
         window.FNAdminComponents.showToast('Unable to load your Firebase profile: ' + error.message, 'error');
-      });
+      }).finally(() => this.clearLoading());
     });
   }
 };

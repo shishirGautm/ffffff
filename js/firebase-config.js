@@ -24,7 +24,7 @@ window.FNAdmin.r2Config = {
 const demoRequested = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1';
 const hasPlaceholderConfig = Object.values(window.FNAdmin.config).some((value) => typeof value === 'string' && /(YOUR_|your_|replace_me|example)/i.test(value));
 window.FNAdmin.demoMode = demoRequested || hasPlaceholderConfig;
-window.FNAdmin.state = {
+const demoState = {
   courts: [
     { id: 'court-1', name: 'Anveshan Futsal', owner: 'Aarav Shrestha', city: 'Kathmandu', district: 'Kathmandu', province: 'Bagmati', address: 'Tinkune, Kathmandu', pricePerHour: 2200, rating: 4.8, bookings: 68, status: 'active', images: [], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '08:00', closingTime: '22:00', contactNumber: '+977-9800000001', description: 'Premium indoor futsal court with a modern synthetic turf.' },
     { id: 'court-2', name: 'GoalZone Futsal', owner: 'Sujan Gurung', city: 'Lalitpur', district: 'Lalitpur', province: 'Bagmati', address: 'Jawalakhel, Lalitpur', pricePerHour: 2500, rating: 4.7, bookings: 52, status: 'active', images: [], type: 'Indoor', turfType: 'Hybrid', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '09:00', closingTime: '23:00', contactNumber: '+977-9800000002', description: 'Convenient and family-friendly futsal venue.' },
@@ -86,6 +86,9 @@ window.FNAdmin.state = {
     { id: 'admin-2', name: 'Manager Team', email: 'manager@futsalnepal.com', role: 'Manager', permissions: ['Courts', 'Bookings', 'Reports'], status: 'active' }
   ]
 };
+
+window.FNAdmin.state = demoState;
+window.FNAdmin.demoState = demoState;
 
 window.FNAdmin.listeners = window.FNAdmin.listeners || [];
 window.FNAdmin.bookingSlotUnsubscriber = null;

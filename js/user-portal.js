@@ -239,7 +239,27 @@ window.FNUserPortal.getCourtReviews = function(courtName) {
 };
 
 window.FNUserPortal.escapeHtml = function(value) {
-  return String(value || '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+  return String(value == null ? '' : value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+};
+
+window.FNUserPortal.formatCourtFieldValue = function(value) {
+  if (value === undefined) return '—';
+  if (value === null) return 'null';
+  if (typeof value === 'string') return value;
+  if (typeof value !== 'object') return String(value);
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (error) {
+    console.error('Unable to format court field:', error);
+    return String(value);
+  }
+};
+
+window.FNUserPortal.renderCourtFields = function(court) {
+  return '<details class="court-firebase-details"><summary>All Firebase details</summary><dl>' +
+    Object.entries(court).map(([key, value]) => '<div><dt>' + this.escapeHtml(key) + '</dt><dd>' +
+      this.escapeHtml(this.formatCourtFieldValue(value)) + '</dd></div>').join('') +
+    '</dl></details>';
 };
 
 window.FNUserPortal.openCourtReviews = function(court) {
@@ -584,7 +604,22 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
   if (!directory || !count) return;
 
   const query = String(searchTerm || '').trim().toLowerCase();
-  const courts = window.FNAdmin.state.courts.filter((court) => !query || [court.name, court.address, court.city, court.district, court.province].filter(Boolean).join(' ').toLowerCase().includes(query));
+  const state = window.FNAdmin.state || {};
+  const allCourts = Array.isArray(state.courts) ? state.courts : [];
+  const liveStatus = state.liveCollections && state.liveCollections.courts;
+  if (!allCourts.length) {
+    const message = liveStatus === false
+      ? ['Court data unavailable', 'Firebase could not load the courts collection. Check this account’s Firestore read permissions and connection.']
+      : liveStatus === true || window.FNAdmin.demoMode
+        ? ['No court records yet', 'Court documents from Firebase will appear here when they are added.']
+        : window.FNAdminData && window.FNAdminData.isLive()
+          ? ['Loading live courts', 'Fetching current court listings from Firebase.']
+          : ['Live courts unavailable', 'Sign in to load court documents from Firebase. Demo listings are only shown in demo mode.'];
+    count.textContent = liveStatus === false ? 'Unavailable' : liveStatus === true || window.FNAdmin.demoMode ? '0 venues' : 'Loading…';
+    directory.innerHTML = '<div class="empty-state user-venue-empty"><i class="fa-solid fa-futbol"></i><h3>' + this.escapeHtml(message[0]) + '</h3><p>' + this.escapeHtml(message[1]) + '</p></div>';
+    return;
+  }
+  const courts = allCourts.filter((court) => !query || [court.name, court.address, court.city, court.district, court.province].filter(Boolean).join(' ').toLowerCase().includes(query));
   count.textContent = courts.length + ' venues';
   directory.innerHTML = courts.length ? courts.map((court) => {
     const location = [court.address, court.city, court.district, court.province, 'Nepal'].filter(Boolean).join(', ');
@@ -595,10 +630,12 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
     const reviews = this.getCourtReviews(court.name);
     const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length : Number(court.rating || 0);
     const ratingDisplay = averageRating ? '<span class="court-rating"><i class="fa-solid fa-star"></i> ' + averageRating.toFixed(1) + '</span><span class="court-review-count">' + reviews.length + ' review' + (reviews.length === 1 ? '' : 's') + '</span>' : '<span class="court-review-count">No reviews yet</span>';
-    const bookingAction = court.status === 'active' ? '<button class="btn btn-primary user-court-book" data-court-id="' + court.id + '" type="button">Book now</button>' : '<span class="court-status inactive">Currently unavailable</span>';
+    const courtId = this.escapeHtml(court.id);
+    const courtName = this.escapeHtml(court.name || 'Futsal court');
+    const bookingAction = court.status === 'active' ? '<button class="btn btn-primary user-court-book" data-court-id="' + courtId + '" type="button">Book now</button>' : '<span class="court-status inactive">Currently unavailable</span>';
     const amenities = [['parking', 'Parking'], ['washroom', 'Washroom'], ['changingRoom', 'Changing room'], ['shower', 'Shower'], ['lighting', 'Lights']].filter(([key]) => court[key]).map(([, label]) => '<span>' + label + '</span>').join('');
-    const contact = court.contactNumber ? '<a href="tel:' + court.contactNumber + '"><i class="fa-solid fa-phone"></i> ' + court.contactNumber + '</a>' : '<span>Contact not available</span>';
-    return '<article class="user-court-card"><img class="court-card-image" src="' + imageUrl + '" alt="' + court.name + '" /><div class="court-card-title"><h4>' + court.name + '</h4><div class="court-rating-summary">' + ratingDisplay + '</div></div><p class="user-court-address"><i class="fa-solid fa-location-dot"></i> ' + location + '</p><div class="court-meta"><span class="court-price">NPR ' + Number(court.pricePerHour || 0).toLocaleString() + '/hr</span><span>' + (court.openingTime || '08:00') + ' - ' + (court.closingTime || '22:00') + '</span></div><div class="user-court-specs"><span><strong>Type</strong>' + (court.type || 'Indoor') + '</span><span><strong>Turf</strong>' + (court.turfType || 'Artificial') + '</span></div><div class="user-court-map"><div class="user-court-map-heading"><strong>' + court.name + '</strong><span>Live location</span></div><iframe src="' + mapEmbedUrl + '" title="Live map for ' + court.name + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div><div class="user-court-contact">' + contact + '</div>' + (amenities ? '<div class="user-court-amenities">' + amenities + '</div>' : '') + (court.description ? '<p class="user-court-description">' + court.description + '</p>' : '') + '<div class="court-actions">' + bookingAction + '<button class="court-reviews-link" type="button" data-court-reviews="' + court.id + '"><i class="fa-regular fa-star"></i> View reviews</button><a class="court-map-link" href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + court.name + ' map</a></div></article>';
+    const contact = court.contactNumber ? '<a href="tel:' + this.escapeHtml(court.contactNumber) + '"><i class="fa-solid fa-phone"></i> ' + this.escapeHtml(court.contactNumber) + '</a>' : '<span>Contact not available</span>';
+    return '<article class="user-court-card"><img class="court-card-image" src="' + this.escapeHtml(imageUrl) + '" alt="' + courtName + '" /><div class="court-card-title"><h4>' + courtName + '</h4><div class="court-rating-summary">' + ratingDisplay + '</div></div><p class="user-court-address"><i class="fa-solid fa-location-dot"></i> ' + this.escapeHtml(location) + '</p><div class="court-meta"><span class="court-price">NPR ' + Number(court.pricePerHour || 0).toLocaleString() + '/hr</span><span>' + this.escapeHtml((court.openingTime || '08:00') + ' - ' + (court.closingTime || '22:00')) + '</span></div><div class="user-court-specs"><span><strong>Type</strong>' + this.escapeHtml(court.type || 'Indoor') + '</span><span><strong>Turf</strong>' + this.escapeHtml(court.turfType || 'Artificial') + '</span></div><div class="user-court-map"><div class="user-court-map-heading"><strong>' + courtName + '</strong><span>Live location</span></div><iframe src="' + this.escapeHtml(mapEmbedUrl) + '" title="Live map for ' + courtName + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div><div class="user-court-contact">' + contact + '</div>' + (amenities ? '<div class="user-court-amenities">' + amenities + '</div>' : '') + (court.description ? '<p class="user-court-description">' + this.escapeHtml(court.description) + '</p>' : '') + this.renderCourtFields(court) + '<div class="court-actions">' + bookingAction + '<button class="court-reviews-link" type="button" data-court-reviews="' + courtId + '"><i class="fa-regular fa-star"></i> View reviews</button><a class="court-map-link" href="' + this.escapeHtml(mapUrl) + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + courtName + ' map</a></div></article>';
   }).join('') : '<div class="empty-state user-venue-empty"><i class="fa-solid fa-magnifying-glass"></i><h3>No venues found</h3><p>Try a different futsal name or location.</p></div>';
 
   directory.querySelectorAll('.user-court-book').forEach((button) => {

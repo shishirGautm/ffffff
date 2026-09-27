@@ -26,7 +26,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="css/style.css?v=20260927-2" />
+    <link rel="stylesheet" href="css/style.css?v=20260927-13" />
     <link rel="stylesheet" href="css/responsive.css?v=20260912" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -60,8 +60,10 @@
           </label>
           <button class="btn btn-primary full-width" type="submit">Login</button>
         </form>
-
-        <button class="auth-link" id="showRegisterBtn" type="button">Create an account</button>
+       <p class="auth-register-prompt" id="authRegisterPrompt">
+         <span>Don't have an account?</span>
+         <button class="auth-link" id="showRegisterBtn" type="button">Create an account</button>
+       </p>
 
         <form id="registerForm" class="hidden" hidden autocomplete="off">
           <div class="auth-form-heading">
@@ -77,6 +79,10 @@
         </form>
 
       </div>
+    </div>
+    <div id="authLoginLoading" class="auth-login-loading" role="status" aria-live="polite" hidden>
+      <span class="auth-login-spinner" aria-hidden="true"></span>
+      <span>Logging in...</span>
     </div>
 
     <div id="userSection" class="user-section hidden">
@@ -350,7 +356,6 @@
           <button class="nav-link" data-view="teams"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
           <button class="nav-link" data-view="matches"><i class="fa-solid fa-trophy"></i><span>Matches</span></button>
           <button class="nav-link" data-view="tournaments"><i class="fa-solid fa-medal"></i><span>Tournaments</span></button>
-          <button class="nav-link" data-view="communities"><i class="fa-solid fa-comments"></i><span>Communities</span></button>
           <button class="nav-link" data-view="payments"><i class="fa-solid fa-wallet"></i><span>Payments</span></button>
           <button class="nav-link" data-view="reviews"><i class="fa-solid fa-star"></i><span>Reviews</span></button>
           <button class="nav-link" data-view="notifications"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
@@ -363,8 +368,8 @@
         <div class="sidebar__profile">
           <div class="profile-avatar">AN</div>
           <div>
-            <strong>Admin Nepal</strong>
-            <small>Administrator</small>
+            <strong id="sidebarAccountName">Administrator</strong>
+            <small id="sidebarAccountRole">Admin</small>
           </div>
         </div>
       </aside>
@@ -398,14 +403,11 @@
                 <button type="button" class="notification-dropdown__footer" id="viewAllNotificationsBtn">View all notifications</button>
               </div>
             </div>
-            <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-              <i class="fa-solid fa-moon"></i>
-            </button>
             <div class="user-menu">
-              <div class="avatar-mini">AN</div>
+              <div class="avatar-mini" id="topbarAccountInitials">FN</div>
               <div>
-                <strong>Futsal Nepal</strong>
-                <small>Super Admin</small>
+                <strong id="topbarAccountName">Futsal Nepal</strong>
+                <small id="topbarAccountRole">Admin</small>
               </div>
               <i class="fa-solid fa-chevron-down"></i>
             </div>
@@ -416,7 +418,7 @@
           <section id="dashboard-section" class="page-section active" data-page="dashboard">
             <div class="hero-card">
               <div>
-                <p class="eyebrow text-green"><span id="adminGreeting">Good Morning</span>, Admin 👋</p>
+                <p class="eyebrow text-green"><span id="adminGreeting">Good morning</span>, <span id="adminGreetingName">Admin</span> 👋</p>
                 <h2>Here's what's happening with Futsal Nepal today.</h2>
                 <p class="hero-subtitle">Track bookings, monitor court performance, and keep your community active across every venue.</p>
               </div>
@@ -566,16 +568,6 @@
               </select>
             </div>
             <div id="tournamentsTableContainer" class="data-card table-card"></div>
-          </section>
-
-          <section id="communities-section" class="page-section" data-page="communities">
-            <div class="section-toolbar">
-              <div>
-                <p class="eyebrow">Community</p>
-                <h2>Communities</h2>
-              </div>
-            </div>
-            <div class="empty-state"><i class="fa-solid fa-comments"></i><h3>Community feeds are ready for integration</h3><p>Connect the app with your Firebase collections to manage posts and groups.</p></div>
           </section>
 
           <section id="payments-section" class="page-section" data-page="payments">
@@ -738,15 +730,15 @@
       }
     </script>
 
-    <script src="js/firebase-config.js?v=20260927-3"></script>
-    <script src="js/firebase-data.js?v=20260927-1"></script>
+    <script src="js/firebase-config.js?v=20260927-5"></script>
+    <script src="js/firebase-data.js?v=20260927-5"></script>
     <script src="js/components.js"></script>
     <script src="js/install.js?v=20260927-1"></script>
-    <script src="js/auth.js?v=20260913-7"></script>
-    <script src="js/user-portal.js?v=20260927-3"></script>
+    <script src="js/auth.js?v=20260927-12"></script>
+    <script src="js/user-portal.js?v=20260927-4"></script>
     <script src="js/owner-portal.js?v=20260927-2"></script>
-    <script src="js/dashboard.js?v=20260912-4"></script>
-    <script src="js/courts.js?v=20260913-4"></script>
+    <script src="js/dashboard.js?v=20260927-1"></script>
+    <script src="js/courts.js?v=20260927-6"></script>
     <script src="js/bookings.js?v=20260927-1"></script>
     <script src="js/users.js?v=20260912-3"></script>
     <script src="js/teams.js"></script>
@@ -758,7 +750,7 @@
     <script src="js/reports.js?v=20260927-1"></script>
     <script src="js/admins.js?v=20260912-2"></script>
     <script src="js/settings.js"></script>
-    <script src="js/app.js?v=20260927-2"></script>
+    <script src="js/app.js?v=20260927-5"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {

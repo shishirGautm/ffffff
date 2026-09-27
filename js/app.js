@@ -74,6 +74,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.FNAdminAuth.getRole() === 'Owner' && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
   window.addEventListener('fn:bookings-error', () => window.FNAdminComponents.showToast('Live booking updates are temporarily unavailable.', 'error'));
+  window.addEventListener('fn:collection-error', function(event) {
+    if (event.detail && event.detail.collection === 'courts' && window.FNAdminAuth.isAuthenticated()) {
+      window.FNAdminComponents.showToast('Live court data could not be loaded. Check Firebase access and connection.', 'error');
+      if (window.FNAdminAuth.getRole() === 'Admin') window.FNAdminCourts.render();
+      if (window.FNAdminAuth.getRole() === 'User') window.FNUserPortal.renderCourtDirectory();
+    }
+  });
   window.addEventListener('fn:booking-slots-changed', function() {
     if (window.FNAdminAuth.getRole() !== 'User' || !window.FNUserPortal) return;
     window.FNUserPortal.updateTimeSlots();

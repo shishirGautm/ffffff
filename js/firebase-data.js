@@ -92,22 +92,19 @@ window.FNAdminData.loadState = function(role) {
 
   const dataCollections = allowedCollections.filter((name) => name !== 'notifications');
   return Promise.all(dataCollections.map((name) => this.getCollection(name).get().then((snapshot) => {
-    window.FNAdmin.state[name] = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    window.FNAdmin.state[name] = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
     window.FNAdmin.state.liveCollections[name] = true;
   }).catch((error) => {
+    window.FNAdmin.state.liveCollections[name] = false;
+    window.dispatchEvent(new CustomEvent('fn:collection-error', { detail: { collection: name, error } }));
     if (error && (error.code === 'permission-denied' || error.code === 'failed-precondition')) {
       console.warn('Skipping live load for ' + name + ' due to Firebase permissions/configuration.');
-      window.FNAdmin.state[name] = [];
-      window.FNAdmin.state.liveCollections[name] = false;
       return;
     }
     throw error;
   }))).then(() => this.loadNotifications(role)).then(() => true).catch((error) => {
     if (error && (error.code === 'permission-denied' || error.code === 'failed-precondition')) {
-      dataCollections.forEach((name) => {
-        window.FNAdmin.state[name] = [];
-        window.FNAdmin.state.liveCollections[name] = false;
-      });
+      dataCollections.forEach((name) => { window.FNAdmin.state.liveCollections[name] = false; });
       window.FNAdmin.state.notifications = Array.isArray(window.FNAdmin.state.notifications) ? window.FNAdmin.state.notifications : [];
       return true;
     }
@@ -209,9 +206,9 @@ window.FNAdminData.subscribeState = function(role) {
   this.unsubscribers = [];
   const allowedCollections = role === 'Admin' ? this.collections : role === 'User' ? ['courts', 'users', 'teams', 'matches', 'tournaments', 'reviews', 'notifications'] : ['courts', 'bookings', 'notifications'];
   allowedCollections.forEach((name) => {
-    if (name === 'notifications') return;
+    if (name === 'notifications' || name === 'bookings') return;
     const unsubscribe = this.getCollection(name).onSnapshot((snapshot) => {
-      window.FNAdmin.state[name] = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      window.FNAdmin.state[name] = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
       window.FNAdmin.state.liveCollections[name] = true;
       window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: name } }));
     }, (error) => {

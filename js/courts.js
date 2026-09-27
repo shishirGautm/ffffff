@@ -17,6 +17,34 @@ window.FNAdminCourts.getRows = function(searchTerm) {
   ]);
 };
 
+window.FNAdminCourts.formatFieldValue = function(value) {
+  if (value === undefined) return '—';
+  if (value === null) return 'null';
+  if (typeof value !== 'object') return String(value);
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (error) {
+    console.error('Unable to format court field:', error);
+    return String(value);
+  }
+};
+
+window.FNAdminCourts.escapeHtml = function(value) {
+  return String(value == null ? '' : value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+};
+
+window.FNAdminCourts.viewDetails = function(court) {
+  const fields = Object.entries(court).map(([key, value]) =>
+    '<div class="court-record-field"><dt>' + this.escapeHtml(key) + '</dt><dd>' +
+    this.escapeHtml(this.formatFieldValue(value)) + '</dd></div>'
+  ).join('');
+  window.FNAdminComponents.openModal(
+    '<div class="panel__header"><div><p class="eyebrow">Live Firebase court record</p><h3>' + this.escapeHtml(court.name || 'Court details') + '</h3></div><button class="icon-button" data-close-modal="true" aria-label="Close court details"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<dl class="court-record-fields">' + fields + '</dl>'
+  );
+  document.querySelectorAll('[data-close-modal="true"]').forEach((button) => button.addEventListener('click', window.FNAdminComponents.closeModal));
+};
+
 window.FNAdminCourts.render = function() {
   const searchTerm = document.getElementById('courtSearch') ? document.getElementById('courtSearch').value : '';
   const target = document.getElementById('courtsTableContainer');
@@ -24,7 +52,13 @@ window.FNAdminCourts.render = function() {
 
   const headers = ['Image', 'Court', 'Location', 'Price', 'Rating', 'Bookings', 'Status', 'Actions'];
   const rows = this.getRows(searchTerm);
-  window.FNAdminComponents.renderTable({ headers, rows, targetId: 'courtsTableContainer', emptyMessage: 'No courts match your search.' });
+  const liveStatus = window.FNAdmin.state.liveCollections && window.FNAdmin.state.liveCollections.courts;
+  const emptyMessage = liveStatus === false
+    ? 'Firebase could not load the courts collection. Check this account’s Firestore read permissions and connection.'
+    : liveStatus === true || window.FNAdmin.demoMode
+      ? (searchTerm ? 'No courts match your search.' : 'No court documents are available in Firebase.')
+      : 'Loading court records from Firebase.';
+  window.FNAdminComponents.renderTable({ headers, rows, targetId: 'courtsTableContainer', emptyMessage });
 
   const modalButtons = target.querySelectorAll('.icon-button[data-court-action]');
   modalButtons.forEach((btn) => {
@@ -33,7 +67,7 @@ window.FNAdminCourts.render = function() {
       if (!court) return;
       if (this.dataset.courtAction === 'edit') window.FNAdminCourts.openForm(court);
       if (this.dataset.courtAction === 'delete') window.FNAdminCourts.deleteCourt(court);
-      if (this.dataset.courtAction === 'view') window.FNAdminCourts.openForm(court);
+      if (this.dataset.courtAction === 'view') window.FNAdminCourts.viewDetails(court);
     });
   });
 };
@@ -47,9 +81,14 @@ window.FNAdminCourts.deleteCourt = function(court) {
     : Promise.resolve();
   remove.then(() => {
     if (index >= 0) window.FNAdmin.state.courts.splice(index, 1);
-    window.FNAdminApp.renderAll();
-    window.dispatchEvent(new CustomEvent('fn:courts-changed', { detail: { deletedCourtId: court.id } }));
     window.FNAdminComponents.showToast('Court deleted successfully.', 'success');
+    window.dispatchEvent(new CustomEvent('fn:courts-changed', { detail: { deletedCourtId: court.id } }));
+    try {
+      window.FNAdminApp.renderAll();
+    } catch (error) {
+      console.error('Court was deleted, but the dashboard could not refresh:', error);
+      window.FNAdminComponents.showToast('Court was deleted, but the dashboard could not refresh. Reload to see the latest data.', 'error');
+    }
   }).catch((error) => {
     console.error('Unable to delete court:', error);
     window.FNAdminComponents.showToast('Court could not be deleted (' + (error.code || 'error') + '): ' + (error.message || 'permission denied.'), 'error');

@@ -66,6 +66,12 @@ window.FNAdminReports.renderCharts = function() {
 
   window.FNAdmin.reportsCharts = window.FNAdmin.reportsCharts || {};
   Object.values(window.FNAdmin.reportsCharts).forEach((chart) => chart.destroy());
+  if (typeof ChartConstructor.getChart === 'function') {
+    Object.values(chartElements).forEach((canvas) => {
+      const existingChart = ChartConstructor.getChart(canvas);
+      if (existingChart) existingChart.destroy();
+    });
+  }
 
   const state = window.FNAdmin.state || {};
   const bookings = Array.isArray(state.bookings) ? state.bookings : [];

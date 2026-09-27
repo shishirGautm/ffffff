@@ -78,11 +78,47 @@ button {
 img { max-width: 100%; display: block; }
 
 .auth-screen {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(135deg, rgba(0, 77, 53, 0.95), rgba(0, 185, 90, 0.75));
+  background:
+    linear-gradient(135deg, rgba(0, 48, 32, 0.88), rgba(0, 115, 61, 0.72)),
+    radial-gradient(ellipse at 20% 15%, rgba(80, 221, 135, 0.36), transparent 42%),
+    linear-gradient(145deg, #003b27, #087a45 54%, #004d35);
+}
+
+.auth-screen::before {
+  position: absolute;
+  z-index: -1;
+  inset: 7% 5%;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at center, transparent 0 10%, rgba(255,255,255,0.23) 10.1% 10.35%, transparent 10.45%),
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,0.2) calc(50% - 1px), rgba(255,255,255,0.2) calc(50% + 1px), transparent calc(50% + 1px)),
+    linear-gradient(90deg, transparent 16%, rgba(255,255,255,0.16) 16.1% 16.3%, transparent 16.4% 83.6%, rgba(255,255,255,0.16) 83.7% 83.9%, transparent 84%),
+    linear-gradient(0deg, transparent 25%, rgba(255,255,255,0.16) 25.1% 25.3%, transparent 25.4% 74.6%, rgba(255,255,255,0.16) 74.7% 74.9%, transparent 75%);
+  content: "";
+  pointer-events: none;
+}
+
+.auth-screen::after {
+  position: absolute;
+  z-index: -1;
+  right: max(5vw, 24px);
+  bottom: 1vh;
+  color: rgba(255, 255, 255, 0.13);
+  content: "\f1e3";
+  font-family: "Font Awesome 6 Free";
+  font-size: clamp(7rem, 21vw, 19rem);
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  transform: rotate(-18deg);
 }
 
 .auth-screen.hidden,
@@ -94,12 +130,88 @@ img { max-width: 100%; display: block; }
 .auth-card .hidden { display: none; }
 
 .auth-card {
+  position: relative;
+  z-index: 1;
   width: min(460px, 100%);
-  background: rgba(255,255,255,0.98);
+  background: rgba(255,255,255,0.93);
+  backdrop-filter: blur(14px);
   border-radius: 26px;
   padding: 32px 28px;
-  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255,255,255,0.3);
+}
+
+.auth-login-loading[hidden] { display: none; }
+
+.auth-login-loading {
+  position: fixed;
+  z-index: 500;
+  inset: 0;
+  overflow: hidden;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 18px;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(0, 48, 32, 0.94), rgba(0, 115, 61, 0.88)),
+    radial-gradient(ellipse at 20% 15%, rgba(80, 221, 135, 0.4), transparent 42%),
+    linear-gradient(145deg, #003b27, #087a45 54%, #004d35);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.auth-login-loading::before {
+  position: absolute;
+  z-index: 0;
+  inset: 7% 5%;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background:
+    radial-gradient(circle at center, transparent 0 10%, rgba(255,255,255,0.23) 10.1% 10.35%, transparent 10.45%),
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,0.2) calc(50% - 1px), rgba(255,255,255,0.2) calc(50% + 1px), transparent calc(50% + 1px)),
+    linear-gradient(90deg, transparent 16%, rgba(255,255,255,0.16) 16.1% 16.3%, transparent 16.4% 83.6%, rgba(255,255,255,0.16) 83.7% 83.9%, transparent 84%),
+    linear-gradient(0deg, transparent 25%, rgba(255,255,255,0.16) 25.1% 25.3%, transparent 25.4% 74.6%, rgba(255,255,255,0.16) 74.7% 74.9%, transparent 75%);
+  content: "";
+  pointer-events: none;
+}
+
+.auth-login-loading::after {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  width: clamp(150px, 32vw, 260px);
+  height: clamp(150px, 32vw, 260px);
+  background: url("../assets/logo.svg") center / contain no-repeat;
+  content: "";
+  opacity: 0.14;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.auth-login-loading > * { position: relative; z-index: 1; }
+
+.auth-login-loading > span:last-child {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #00c853, #004d35);
+  color: #ffffff;
+  box-shadow: 0 8px 22px rgba(0, 32, 21, 0.32);
+  font-size: 1rem;
+}
+
+.auth-login-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.28);
+  border-top-color: #00c853;
+  border-radius: 50%;
+  animation: authLoginSpin 0.8s linear infinite;
+}
+
+@keyframes authLoginSpin {
+  to { transform: rotate(360deg); }
 }
 
 .auth-card h2 {
@@ -171,6 +283,27 @@ img { max-width: 100%; display: block; }
 }
 
 .auth-link:hover { text-decoration: underline; }
+
+.auth-register-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px;
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.auth-register-prompt .auth-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  color: var(--green);
+  font-size: inherit;
+  font-weight: 800;
+}
 
 .auth-form-heading { margin-bottom: 4px; }
 .auth-form-heading h3 { margin: 0 0 4px; }
@@ -789,6 +922,18 @@ img { max-width: 100%; display: block; }
 .user-court-amenities { display: flex; flex-wrap: wrap; gap: 5px; }
 .user-court-amenities span { padding: 4px 7px; border: 1px solid #bfe8d6; border-radius: 999px; color: var(--green); font-size: 0.68rem; font-weight: 700; }
 .user-court-description { line-height: 1.45; }
+.court-firebase-details { padding: 10px; border: 1px solid #d5dfda; border-radius: 10px; background: var(--white); }
+.court-firebase-details summary { color: var(--green); font-size: 0.78rem; font-weight: 800; cursor: pointer; }
+.court-firebase-details dl,
+.court-record-fields { display: grid; gap: 7px; margin: 10px 0 0; }
+.court-firebase-details dl > div { display: grid; grid-template-columns: minmax(100px, 0.7fr) minmax(0, 1.3fr); gap: 10px; padding: 8px; border-radius: 8px; background: var(--bg); }
+.court-firebase-details dt,
+.court-record-field dt { color: var(--muted); font-size: 0.72rem; font-weight: 800; overflow-wrap: anywhere; }
+.court-firebase-details dd,
+.court-record-field dd { margin: 0; color: var(--text); font-size: 0.78rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.court-record-field { padding: 8px; border-radius: 8px; background: var(--bg); }
+.court-record-fields { max-height: 65vh; overflow: auto; }
+.court-record-field { min-width: 0; padding: 8px; border-radius: 8px; background: var(--bg); }
 .user-court-map { overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--white); }
 .user-court-map-heading { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; font-size: 0.72rem; }
 .user-court-map-heading span { color: var(--muted); }
@@ -2542,4 +2687,8 @@ body.dark-mode .modal__pane input::placeholder,
 body.dark-mode .modal__pane textarea::placeholder {
   color: #9aafa3;
   opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-login-spinner { animation-duration: 1.8s; }
 }
