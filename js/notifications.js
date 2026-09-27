@@ -2,7 +2,7 @@ window.FNAdminNotifications = window.FNAdminNotifications || {};
 
 window.FNAdminNotifications.getVisibleNotifications = function() {
   const expiryLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
-  return (window.FNAdmin.state.notifications || []).filter((item) => new Date(item.date || 0).getTime() >= expiryLimit && (item.type !== 'booking' || item.target === 'Staff'));
+  return window.FNAdmin.getNotificationsForRole('Admin').filter((item) => new Date(item.date || item.createdAt || 0).getTime() >= expiryLimit);
 };
 
 window.FNAdminNotifications.getRows = function() {
@@ -11,17 +11,20 @@ window.FNAdminNotifications.getRows = function() {
     item.message,
     item.target,
     item.date,
-    window.FNAdminComponents.getStatusBadge(item.status),
-    '<div class="action-group"><button class="icon-button danger" data-notification-action="delete" data-notification-id="' + item.id + '" title="Delete"><i class="fa-solid fa-trash"></i></button></div>'
+    window.FNAdminComponents.getStatusBadge(item.isRead === true ? 'Read' : 'Unread'),
+    '<div class="action-group">' + (item.isRead === true ? '' : '<button class="icon-button" data-notification-action="read" data-notification-id="' + item.id + '" title="Mark as read"><i class="fa-solid fa-check"></i></button>') + '<button class="icon-button danger" data-notification-action="delete" data-notification-id="' + item.id + '" title="Delete"><i class="fa-solid fa-trash"></i></button></div>'
   ]);
 };
 
 window.FNAdminNotifications.render = function() {
-  const headers = ['Title', 'Message', 'Target', 'Date', 'Status', 'Actions'];
+  const headers = ['Title', 'Message', 'Target', 'Date', 'Read state', 'Actions'];
   const rows = this.getRows();
   window.FNAdminComponents.renderTable({ headers, rows, targetId: 'notificationsTableContainer', emptyMessage: 'No notifications scheduled.' });
   const target = document.getElementById('notificationsTableContainer');
-  if (target) target.querySelectorAll('[data-notification-action="delete"]').forEach((button) => button.addEventListener('click', () => this.delete(button.dataset.notificationId)));
+  if (target) {
+    target.querySelectorAll('[data-notification-action="delete"]').forEach((button) => button.addEventListener('click', () => this.delete(button.dataset.notificationId)));
+    target.querySelectorAll('[data-notification-action="read"]').forEach((button) => button.addEventListener('click', () => this.markRead(button.dataset.notificationId)));
+  }
   this.renderBell();
 };
 
@@ -31,9 +34,10 @@ window.FNAdminNotifications.renderBell = function() {
   const preview = document.getElementById('adminNotificationPreview');
   if (!badge || !count || !preview) return;
   const notifications = this.getVisibleNotifications().slice().sort((first, second) => String(second.date || '').localeCompare(String(first.date || '')));
-  badge.textContent = notifications.length > 99 ? '99+' : String(notifications.length);
-  count.textContent = notifications.length + ' new';
-  preview.innerHTML = notifications.length ? notifications.slice(0, 5).map((item) => '<article class="notification-preview-item"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="notification-empty">No notifications yet.</p>';
+  const unreadCount = notifications.filter((item) => item.isRead !== true).length;
+  badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+  count.textContent = unreadCount + ' unread';
+  preview.innerHTML = notifications.length ? notifications.slice(0, 5).map((item) => '<article class="notification-preview-item' + (item.isRead === true ? '' : ' notification-unread') + '"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date || item.createdAt).toLocaleString() + '</small></article>').join('') : '<p class="notification-empty">No notifications yet.</p>';
 };
 
 window.FNAdminNotifications.initBell = function() {
@@ -51,6 +55,8 @@ window.FNAdminNotifications.initBell = function() {
     const link = document.querySelector('.nav-link[data-view="notifications"]');
     if (link) link.click();
   });
+  const markAllRead = document.getElementById('markAdminNotificationsReadBtn');
+  if (markAllRead) markAllRead.addEventListener('click', () => this.markAllRead());
   document.addEventListener('click', (event) => {
     if (!event.target.closest('.notification-menu')) {
       dropdown.classList.add('is-hidden');
@@ -58,6 +64,15 @@ window.FNAdminNotifications.initBell = function() {
     }
   });
   bell.dataset.fnInitialized = 'true';
+};
+
+window.FNAdminNotifications.markRead = function(notificationId) {
+  const notification = this.getVisibleNotifications().find((item) => item.id === notificationId);
+  return window.FNAdmin.markNotificationRead(notification).then(() => this.render()).catch((error) => window.FNAdminComponents.showToast('Notification could not be updated: ' + error.message, 'error'));
+};
+
+window.FNAdminNotifications.markAllRead = function() {
+  return window.FNAdmin.markAllNotificationsRead(this.getVisibleNotifications()).then(() => this.render()).catch((error) => window.FNAdminComponents.showToast('Notifications could not be updated: ' + error.message, 'error'));
 };
 
 window.FNAdminNotifications.delete = function(notificationId) {
@@ -78,13 +93,34 @@ window.FNAdminNotifications.openForm = function() {
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const data = new FormData(form);
-    const notification = { id: 'notification-' + Date.now(), title: data.get('title'), message: data.get('message'), target: data.get('target'), date: new Date().toISOString(), status: 'Sent' };
-    const save = window.FNAdminData.isLive() ? window.FNAdminData.save('notifications', notification.id, notification) : Promise.resolve();
+    const target = data.get('target');
+    const selectedUsers = (window.FNAdmin.state.users || []).filter((user) => {
+      const role = String(user.role || 'User').toLowerCase();
+      return target === 'All' ? ['user', 'owner'].includes(role) : target === 'Owners' ? role === 'owner' : role === 'user';
+    });
+    const timestamp = Date.now();
+    const notifications = selectedUsers.map((user) => ({
+      id: 'notification-' + timestamp + '-' + user.id,
+      userId: user.id,
+      targetUserId: user.id,
+      targetRole: String(user.role || 'User').toLowerCase() === 'owner' ? 'Owner' : 'User',
+      title: data.get('title'),
+      message: data.get('message'),
+      target,
+      date: new Date(timestamp).toISOString(),
+      createdAt: timestamp,
+      isRead: false,
+      status: 'Sent',
+      type: 'system_notice'
+    }));
+    const save = window.FNAdminData.isLive()
+      ? Promise.all(notifications.map((notification) => window.FNAdminData.save('notifications', notification.id, notification)))
+      : Promise.resolve();
     save.then(() => {
-      window.FNAdmin.state.notifications.push(notification);
+      window.FNAdmin.state.notifications = [...(window.FNAdmin.state.notifications || []), ...notifications];
       window.FNAdminComponents.closeModal();
       this.render();
-      window.FNAdminComponents.showToast('Notification sent successfully.', 'success');
+      window.FNAdminComponents.showToast(notifications.length ? 'Notification sent to ' + notifications.length + ' account' + (notifications.length === 1 ? '' : 's') + '.' : 'There are no accounts in this audience yet.', notifications.length ? 'success' : 'info');
     }).catch((error) => window.FNAdminComponents.showToast('Notification could not be sent: ' + error.message, 'error'));
   });
 };

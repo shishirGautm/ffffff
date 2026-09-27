@@ -10,9 +10,20 @@ window.FNAdmin.config = {
   measurementId: "G-Z0E0STK2HQ"
 };
 
-const isLocalFile = typeof window !== 'undefined' && window.location && window.location.protocol === 'file:';
+window.FNAdmin.r2Config = {
+  enabled: false,
+  publicUrl: 'https://your-bucket.r2.cloudflarestorage.com/your-bucket',
+  uploadUrl: 'https://your-worker.example.com/upload',
+  uploadMethod: 'PUT',
+  headers: {},
+  getPublicUrl: function(key) {
+    return new URL(key, this.publicUrl.replace(/\/$/, '') + '/').toString();
+  }
+};
+
 const demoRequested = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1';
-window.FNAdmin.demoMode = isLocalFile || demoRequested || Object.values(window.FNAdmin.config).some((value) => typeof value === 'string' && value.includes('YOUR_'));
+const hasPlaceholderConfig = Object.values(window.FNAdmin.config).some((value) => typeof value === 'string' && /(YOUR_|your_|replace_me|example)/i.test(value));
+window.FNAdmin.demoMode = demoRequested || hasPlaceholderConfig;
 window.FNAdmin.state = {
   courts: [
     { id: 'court-1', name: 'Anveshan Futsal', owner: 'Aarav Shrestha', city: 'Kathmandu', district: 'Kathmandu', province: 'Bagmati', address: 'Tinkune, Kathmandu', pricePerHour: 2200, rating: 4.8, bookings: 68, status: 'active', images: [], type: 'Indoor', turfType: 'Artificial', parking: true, washroom: true, changingRoom: true, shower: true, lighting: true, openingTime: '08:00', closingTime: '22:00', contactNumber: '+977-9800000001', description: 'Premium indoor futsal court with a modern synthetic turf.' },
@@ -77,9 +88,41 @@ window.FNAdmin.state = {
 };
 
 window.FNAdmin.listeners = window.FNAdmin.listeners || [];
+window.FNAdmin.bookingSlotUnsubscriber = null;
+window.FNAdmin.bookingSlotSubscriptionKey = '';
 
 window.FNAdmin.getBookingSlotId = function(booking) {
   return [booking.courtId || booking.court, booking.date, booking.startTime, booking.endTime].join('_').replace(/[^a-zA-Z0-9_-]/g, '-');
+};
+
+window.FNAdmin.getNepalDateTime = function(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kathmandu',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(date).reduce((values, part) => {
+    values[part.type] = part.value;
+    return values;
+  }, {});
+  return {
+    date: parts.year + '-' + parts.month + '-' + parts.day,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute)
+  };
+};
+
+window.FNAdmin.getNepalTimestamp = function(date, time) {
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  return Date.UTC(year, month - 1, day, hour, minute) - (5 * 60 + 45) * 60 * 1000;
+};
+
+window.FNAdmin.isBookingTimeExpired = function(booking, nepalNow = this.getNepalDateTime()) {
+  return booking.date < nepalNow.date
+    || (booking.date === nepalNow.date && Number(booking.startTime.split(':')[0]) * 60 + Number(booking.startTime.split(':')[1]) <= nepalNow.minutes);
 };
 
 window.FNAdmin.canTransitionBookingStatus = function(currentStatus, nextStatus) {
@@ -111,10 +154,10 @@ window.FNAdmin.hasBookingConflict = function(booking, excludeBookingId) {
   };
   const bookingStart = toMinutes(booking.startTime);
   const bookingEnd = toMinutes(booking.endTime);
-  const today = new Date().toISOString().slice(0, 10);
-  return (this.state.bookings || []).some((item) => {
-    const status = String(item.bookingStatus || '').toLowerCase();
-    if (item.id === excludeBookingId || status !== 'confirmed' || (item.date && item.date < today)) return false;
+  const today = this.getNepalDateTime().date;
+  const reservations = [...(this.state.bookings || []), ...(this.state.bookingSlots || [])];
+  return reservations.some((item) => {
+    if (item.id === excludeBookingId || item.bookingId === excludeBookingId || !this.isBookingActive(item) || (item.date && item.date < today)) return false;
     if (!((item.courtId && item.courtId === booking.courtId) || item.court === booking.court) || item.date !== booking.date) return false;
     return bookingStart < toMinutes(item.endTime) && toMinutes(item.startTime) < bookingEnd;
   });
@@ -128,7 +171,21 @@ window.FNAdmin.isBookingActive = function(booking) {
 
 window.FNAdmin.syncBookings = function(booking) {
   if (this.demoMode) {
+    const actorRole = window.FNAdminAuth && window.FNAdminAuth.getRole();
+    const court = (this.state.courts || []).find((item) => item.id === booking.courtId || item.name === booking.court);
+    const alerts = [];
+    const addAlert = (id, targetRole, targetUserId, title, message, type) => alerts.push({ id, bookingId: booking.id, courtId: booking.courtId || '', userId: booking.userId || '', targetUserId: targetUserId || '', targetRole, target: targetRole === 'Admin' ? 'Staff' : targetRole === 'Owner' ? 'Owners' : 'Users', title, message, type, isRead: false, createdAt: Date.now(), date: new Date().toISOString(), status: 'Sent' });
+    if (booking.bookingStatus === 'Confirmed') {
+      addAlert('booking-confirmed-' + booking.id, 'User', booking.userId, 'Booking confirmed', 'Your booking at ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' is confirmed.', 'booking_confirmed');
+      addAlert('booking-confirmed-admin-' + booking.id, 'Admin', '', 'Booking confirmed', booking.court + ' booking ' + booking.id + ' was confirmed.', 'booking_confirmed');
+    } else if (booking.bookingStatus === 'Cancelled') {
+      addAlert('booking-cancelled-' + booking.id, 'User', booking.userId, 'Booking cancelled', 'Your booking at ' + booking.court + ' on ' + booking.date + ' was cancelled.', 'booking_cancelled');
+      addAlert('booking-cancelled-admin-' + booking.id, 'Admin', '', 'Booking cancelled', booking.court + ' booking ' + booking.id + ' was cancelled.', 'booking_cancelled');
+      if (actorRole === 'User' && court && court.ownerId) addAlert('booking-cancelled-owner-' + booking.id, 'Owner', court.ownerId, 'Player cancelled a booking', booking.user + ' cancelled ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + '.', 'booking_cancelled');
+    }
+    if (alerts.length) this.state.notifications = [...(this.state.notifications || []).filter((item) => !alerts.some((alert) => alert.id === item.id)), ...alerts];
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking || null }));
+    if (alerts.length) window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
     return Promise.resolve();
   }
 
@@ -143,7 +200,13 @@ window.FNAdmin.syncBookings = function(booking) {
   const slotReleased = ['cancelled', 'rejected', 'completed'].includes(status);
   const bookingRef = database.collection('bookings').doc(booking.id);
   const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
-  return database.runTransaction((transaction) => transaction.get(slotRef).then((slot) => {
+  const court = (this.state.courts || []).find((item) => item.id === booking.courtId || item.name === booking.court);
+  const ownerId = court && court.ownerId;
+  const actorRole = window.FNAdminAuth && window.FNAdminAuth.getRole();
+  let eventNotifications = [];
+  return database.runTransaction((transaction) => Promise.all([transaction.get(bookingRef), transaction.get(slotRef)]).then(([bookingSnapshot, slot]) => {
+    eventNotifications = [];
+    const previousStatus = bookingSnapshot.exists ? String(bookingSnapshot.data().bookingStatus || '').toLowerCase() : '';
     transaction.set(bookingRef, booking, { merge: true });
     if (slot.exists && slot.data().bookingId === booking.id) {
       transaction.set(slotRef, {
@@ -151,7 +214,112 @@ window.FNAdmin.syncBookings = function(booking) {
         bookingStatus: booking.bookingStatus
       }, { merge: true });
     }
-  }));
+    const date = new Date().toISOString();
+    const createdAt = Date.now();
+    const writeNotification = (id, targetRole, targetUserId, title, message, type) => {
+      const notification = { id, bookingId: booking.id, courtId: booking.courtId || '', userId: booking.userId || '', targetUserId: targetUserId || '', targetRole, target: targetRole === 'Admin' ? 'Staff' : targetRole === 'Owner' ? 'Owners' : 'Users', title, message, type, isRead: false, createdAt, date, status: 'Sent' };
+      eventNotifications.push(notification);
+      transaction.set(database.collection('notifications').doc(id), notification);
+    };
+
+    if (status === 'confirmed' && previousStatus !== 'confirmed') {
+      writeNotification('booking-confirmed-' + booking.id, 'User', booking.userId, 'Booking confirmed', 'Your booking at ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' is confirmed.', 'booking_confirmed');
+      writeNotification('booking-confirmed-admin-' + booking.id, 'Admin', '', 'Booking confirmed', booking.court + ' booking ' + booking.id + ' was confirmed.', 'booking_confirmed');
+    } else if (status === 'cancelled' && previousStatus !== 'cancelled') {
+      writeNotification('booking-cancelled-' + booking.id, 'User', booking.userId, 'Booking cancelled', 'Your booking at ' + booking.court + ' on ' + booking.date + ' was cancelled.', 'booking_cancelled');
+      writeNotification('booking-cancelled-admin-' + booking.id, 'Admin', '', 'Booking cancelled', booking.court + ' booking ' + booking.id + ' was cancelled.', 'booking_cancelled');
+      if (actorRole === 'User' && ownerId) {
+        writeNotification('booking-cancelled-owner-' + booking.id, 'Owner', ownerId, 'Player cancelled a booking', booking.user + ' cancelled ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + '.', 'booking_cancelled');
+      }
+    }
+  })).then(() => {
+    if (eventNotifications.length) {
+      this.state.notifications = [...(this.state.notifications || []).filter((item) => !eventNotifications.some((notification) => notification.id === item.id)), ...eventNotifications];
+      window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
+    }
+  });
+};
+
+window.FNAdmin.rejectBooking = function(booking, reason) {
+  const user = window.FNAdminAuth && window.FNAdminAuth.user;
+  const notification = {
+    id: 'booking-rejected-' + booking.id,
+    bookingId: booking.id,
+    userId: booking.userId || '',
+    targetUserId: booking.userId || '',
+    title: 'Booking request not accepted',
+    message: reason || 'Your booking request for ' + booking.court + ' on ' + booking.date + ' at ' + booking.startTime + ' was not accepted.',
+    target: 'Users',
+    targetRole: 'User',
+    courtId: booking.courtId || '',
+    date: new Date().toISOString(),
+    createdAt: Date.now(),
+    isRead: false,
+    status: 'Sent',
+    type: 'booking_rejected'
+  };
+  const adminNotification = {
+    id: 'booking-rejected-admin-' + booking.id,
+    bookingId: booking.id,
+    courtId: booking.courtId || '',
+    target: 'Staff',
+    targetRole: 'Admin',
+    title: 'Booking request rejected',
+    message: booking.court + ' booking ' + booking.id + ' was rejected by the ground owner.',
+    date: notification.date,
+    createdAt: notification.createdAt,
+    isRead: false,
+    status: 'Sent',
+    type: 'booking_rejected'
+  };
+
+  if (this.demoMode) {
+    this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
+    this.state.bookingSlots = (this.state.bookingSlots || []).filter((item) => item.bookingId !== booking.id);
+    this.state.payments = (this.state.payments || []).filter((item) => item.bookingId !== booking.id);
+    this.state.notifications = [...(this.state.notifications || []), notification];
+    this.state.notifications.push(adminNotification);
+    window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+    window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
+    return Promise.resolve(notification);
+  }
+
+  if (!user || !window.firebase || !firebase.firestore || !firebase.auth || !firebase.auth().currentUser) {
+    return Promise.reject(new Error('A signed-in Firebase account is required to reject a booking.'));
+  }
+
+  const database = firebase.firestore();
+  const bookingRef = database.collection('bookings').doc(booking.id);
+  const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
+  const paymentRef = database.collection('payments').doc('TX-' + booking.id);
+  const notificationRef = database.collection('notifications').doc(notification.id);
+  const adminNotificationRef = database.collection('notifications').doc(adminNotification.id);
+
+  return database.runTransaction((transaction) => Promise.all([
+    transaction.get(bookingRef),
+    transaction.get(slotRef),
+    transaction.get(paymentRef)
+  ]).then(([bookingSnapshot, slotSnapshot, paymentSnapshot]) => {
+    if (!bookingSnapshot.exists) throw new Error('This booking request no longer exists.');
+    const storedBooking = bookingSnapshot.data();
+    notification.userId = storedBooking.userId || '';
+    notification.targetUserId = storedBooking.userId || '';
+    notification.courtId = storedBooking.courtId || '';
+    adminNotification.courtId = storedBooking.courtId || '';
+    if (slotSnapshot.exists && slotSnapshot.data().bookingId === booking.id) transaction.delete(slotRef);
+    if (paymentSnapshot.exists && paymentSnapshot.data().status === 'Pending') transaction.delete(paymentRef);
+    transaction.delete(bookingRef);
+    transaction.set(notificationRef, notification);
+    transaction.set(adminNotificationRef, adminNotification);
+  })).then(() => {
+    this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
+    this.state.bookingSlots = (this.state.bookingSlots || []).filter((item) => item.bookingId !== booking.id);
+    this.state.payments = (this.state.payments || []).filter((item) => item.bookingId !== booking.id);
+    this.state.notifications = [...(this.state.notifications || []).filter((item) => item.id !== notification.id && item.id !== adminNotification.id), notification, adminNotification];
+    window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+    window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
+    return notification;
+  });
 };
 
 window.FNAdmin.deleteBooking = function(booking) {
@@ -186,15 +354,88 @@ window.FNAdmin.deleteBooking = function(booking) {
   });
 };
 
+window.FNAdmin.deleteUserBooking = function(booking) {
+  const user = window.FNAdminAuth && window.FNAdminAuth.user;
+  const isDemoBooking = this.demoMode && user && !booking.userId && booking.user === user.name;
+  if (!user || (booking.userId !== user.uid && !isDemoBooking)) return Promise.reject(new Error('You can only delete your own bookings.'));
+
+  const deleteRecords = () => {
+    const database = firebase.firestore();
+    const bookingRef = database.collection('bookings').doc(booking.id);
+    const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
+    return slotRef.get().then((slot) => {
+      const batch = database.batch();
+      batch.delete(bookingRef);
+      if (slot.exists && slot.data().bookingId === booking.id) batch.delete(slotRef);
+      return batch.commit().catch((error) => {
+        if (error && error.code === 'permission-denied') {
+          throw new Error('Firebase denied deleting the booking or releasing its slot. Deploy the updated firebase/firestore.rules rules, then try again.');
+        }
+        throw error;
+      });
+    }).catch((error) => {
+      if (error && error.code === 'permission-denied') {
+        throw new Error('Firebase denied access to this booking slot. Deploy the updated firebase/firestore.rules rules, then try again.');
+      }
+      throw error;
+    }).then(() => {
+      this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
+      this.state.bookingSlots = (this.state.bookingSlots || []).filter((item) => item.bookingId !== booking.id);
+      window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+    });
+  };
+
+  if (this.demoMode) {
+    this.state.bookings = (this.state.bookings || []).filter((item) => item.id !== booking.id);
+    this.state.payments = (this.state.payments || []).filter((item) => item.id !== 'TX-' + booking.id);
+    window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+    return Promise.resolve();
+  }
+  if (!window.firebase || !firebase.firestore || !firebase.auth || !firebase.auth().currentUser || firebase.auth().currentUser.uid !== user.uid) {
+    return Promise.reject(new Error('Your Firebase login session has expired. Please sign in again.'));
+  }
+
+  const active = ['Pending', 'Confirmed'].includes(booking.bookingStatus);
+  if (!active) return deleteRecords();
+  const bookingStart = this.getNepalTimestamp(booking.date, booking.startTime);
+  if (!Number.isFinite(bookingStart) || (bookingStart > Date.now() && bookingStart - Date.now() <= 60 * 60 * 1000)) {
+    return Promise.reject(new Error('Bookings cannot be deleted within one hour of their start time.'));
+  }
+
+  const previousStatus = booking.bookingStatus;
+  this.setBookingStatus(booking, 'Cancelled');
+  return this.syncBookings(booking).catch((error) => {
+    booking.bookingStatus = previousStatus;
+    if (error && error.code === 'permission-denied') {
+      throw new Error('Firebase denied cancelling this booking or releasing its slot. Deploy the updated firebase/firestore.rules rules, then try again.');
+    }
+    throw error;
+  }).then(deleteRecords);
+};
+
 window.FNAdmin.createBooking = function(booking) {
+  if (this.isBookingTimeExpired(booking)) {
+    const expiredError = new Error('This booking time has already passed in Nepal time. Please choose a future slot.');
+    expiredError.code = 'slot-expired';
+    return Promise.reject(expiredError);
+  }
   if (this.hasBookingConflict(booking)) return Promise.reject(new Error('Already booked. Please choose another time.'));
 
   if (this.demoMode) {
     this.state.bookings.push(booking);
     this.state.payments.push({ id: 'TX-' + booking.id, bookingId: booking.id, user: booking.user, userId: booking.userId, courtId: booking.courtId, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' });
-    this.state.notifications = this.state.notifications || [];
-    this.state.notifications.push({ id: 'booking-' + booking.id, title: 'New booking request', message: booking.user + ' requested ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' for NPR ' + Number(booking.amount || 0).toLocaleString() + '. Status: Pending. Booking ID: ' + booking.id + '.', target: 'Staff', courtId: booking.courtId, date: new Date().toISOString(), status: 'Sent', type: 'booking' });
+    const court = (this.state.courts || []).find((item) => item.id === booking.courtId);
+    const owner = (this.state.users || []).find((item) => item.role === 'Owner' && (item.id === (court && court.ownerId) || item.name === (court && court.owner)));
+    const date = new Date().toISOString();
+    const createdAt = Date.now();
+    const alerts = [
+      { id: 'booking-user-' + booking.id, targetRole: 'User', targetUserId: booking.userId, target: 'Users', title: 'Booking request sent', message: 'Your booking request has been sent to ' + booking.court + ' for ' + booking.startTime + ' - ' + booking.endTime + '.', type: 'booking_created' },
+      { id: 'booking-admin-' + booking.id, targetRole: 'Admin', target: 'Staff', title: 'New booking request', message: booking.user + ' requested ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + '.', type: 'booking_created' }
+    ];
+    if ((court && court.ownerId) || (owner && owner.id)) alerts.push({ id: 'booking-owner-' + booking.id, targetRole: 'Owner', targetUserId: (court && court.ownerId) || owner.id, target: 'Owners', title: 'New booking request', message: booking.user + ' requested ' + booking.startTime + ' - ' + booking.endTime + ' at ' + booking.court + '.', type: 'booking_created' });
+    this.state.notifications = [...(this.state.notifications || []), ...alerts.map((alert) => ({ ...alert, bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, date, createdAt, isRead: false, status: 'Sent' }))];
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+    window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
     return Promise.resolve(booking);
   }
 
@@ -202,16 +443,27 @@ window.FNAdmin.createBooking = function(booking) {
   const database = firebase.firestore();
   const slotRef = database.collection('bookingSlots').doc(this.getBookingSlotId(booking));
   const bookingRef = database.collection('bookings').doc(booking.id);
+  const courtRef = database.collection('courts').doc(booking.courtId);
   const paymentRef = database.collection('payments').doc('TX-' + booking.id);
-  const notificationRef = database.collection('notifications').doc('booking-' + booking.id);
   const payment = { id: 'TX-' + booking.id, bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, user: booking.user, amount: booking.amount, method: booking.paymentMethod, paymentDate: booking.createdAt, status: 'Pending' };
-  const notification = { id: 'booking-' + booking.id, bookingId: booking.id, userId: booking.userId, title: 'New booking request', message: booking.user + ' requested ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' for NPR ' + Number(booking.amount || 0).toLocaleString() + '. Status: Pending. Booking ID: ' + booking.id + '.', target: 'Staff', courtId: booking.courtId, date: new Date().toISOString(), status: 'Sent', type: 'booking' };
-  return database.runTransaction((transaction) => transaction.get(slotRef).then((slot) => {
+  const date = new Date().toISOString();
+  const createdAt = Date.now();
+  const notifications = [
+    { id: 'booking-user-' + booking.id, bookingId: booking.id, userId: booking.userId, targetUserId: booking.userId, targetRole: 'User', target: 'Users', title: 'Booking request sent', message: 'Your booking request has been sent to ' + booking.court + ' for ' + booking.startTime + ' - ' + booking.endTime + '.', type: 'booking_created', courtId: booking.courtId, date, createdAt, isRead: false, status: 'Sent' },
+    { id: 'booking-admin-' + booking.id, bookingId: booking.id, userId: booking.userId, targetRole: 'Admin', target: 'Staff', title: 'New booking request', message: booking.user + ' requested ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + '.', type: 'booking_created', courtId: booking.courtId, date, createdAt, isRead: false, status: 'Sent' }
+  ];
+  return database.runTransaction((transaction) => Promise.all([transaction.get(slotRef), transaction.get(courtRef)]).then(([slot, courtSnapshot]) => {
+    notifications.length = 2;
+    if (this.isBookingTimeExpired(booking)) {
+      const expiredError = new Error('This booking time has already passed in Nepal time. Please choose a future slot.');
+      expiredError.code = 'slot-expired';
+      throw expiredError;
+    }
     const slotData = slot.exists ? slot.data() : {};
     const slotStatus = String(slotData.status || '').toLowerCase();
     const bookingStatus = String(slotData.bookingStatus || '').toLowerCase();
     const slotDate = String(slotData.date || booking.date);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = this.getNepalDateTime().date;
     const isExpired = slotDate < today;
     const lockExpired = bookingStatus === 'pending' && Number(slotData.expiresAt || 0) > 0 && Number(slotData.expiresAt) <= Date.now();
     const isAvailable = isExpired || lockExpired || ['available', 'cancelled', 'released', 'rejected', 'completed'].includes(slotStatus)
@@ -225,11 +477,15 @@ window.FNAdmin.createBooking = function(booking) {
     transaction.set(slotRef, { bookingId: booking.id, userId: booking.userId, courtId: booking.courtId, date: booking.date, startTime: booking.startTime, endTime: booking.endTime, status: booking.bookingStatus, bookingStatus: booking.bookingStatus, expiresAt: booking.expiresAt || null });
     transaction.set(bookingRef, booking);
     transaction.set(paymentRef, payment);
-    transaction.set(notificationRef, notification);
+    const court = courtSnapshot.exists ? courtSnapshot.data() : {};
+    const ownerId = court.ownerId || '';
+    if (ownerId) notifications.push({ id: 'booking-owner-' + booking.id, bookingId: booking.id, userId: booking.userId, targetUserId: ownerId, targetRole: 'Owner', target: 'Owners', title: 'New booking request', message: booking.user + ' requested ' + booking.startTime + ' - ' + booking.endTime + ' at ' + booking.court + '.', type: 'booking_created', courtId: booking.courtId, date, createdAt, isRead: false, status: 'Sent' });
+    notifications.forEach((notification) => transaction.set(database.collection('notifications').doc(notification.id), notification));
   })).then(() => {
     window.FNAdmin.state.bookings = [...(window.FNAdmin.state.bookings || []).filter((item) => item.id !== booking.id), booking];
-    window.FNAdmin.state.notifications = [...(window.FNAdmin.state.notifications || []).filter((item) => item.id !== notification.id), notification];
+    window.FNAdmin.state.notifications = [...(window.FNAdmin.state.notifications || []).filter((item) => !notifications.some((notification) => notification.id === item.id)), ...notifications];
     window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: booking }));
+    window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
     return booking;
   });
 };
@@ -280,20 +536,87 @@ window.FNAdmin.deleteNotification = function(notificationId, rerender) {
   });
 };
 
+window.FNAdmin.getNotificationsForRole = function(role) {
+  const user = window.FNAdminAuth && window.FNAdminAuth.user || {};
+  const courts = window.FNAdmin.state.courts || [];
+  return (this.state.notifications || []).filter((item) => {
+    if (role === 'Admin' || role === 'Super Admin' || role === 'Manager') return true;
+    if (item.targetUserId && item.targetUserId !== user.uid) return false;
+    if (item.targetUserId && item.targetUserId === user.uid) return true;
+    if (item.targetRole === role && !item.targetUserId) return true;
+    if (role === 'User') return !item.targetRole && ['All', 'Users'].includes(item.target);
+    if (role === 'Owner') {
+      if (!item.targetRole && ['All', 'Owners'].includes(item.target)) return true;
+      const ownedCourts = courts.filter((court) => court.ownerId === user.uid || court.owner === user.name);
+      return item.type === 'booking' && item.target === 'Staff' && ownedCourts.some((court) => court.id === item.courtId || court.name === item.court);
+    }
+    return false;
+  });
+};
+
+window.FNAdmin.markNotificationRead = function(notification) {
+  if (!notification || notification.isRead === true) return Promise.resolve();
+  const markLocally = () => {
+    notification.isRead = true;
+    window.dispatchEvent(new CustomEvent('fn:collection-changed', { detail: { collection: 'notifications' } }));
+  };
+  if (this.demoMode) {
+    markLocally();
+    return Promise.resolve();
+  }
+  if (!window.firebase || !firebase.firestore || !firebase.auth || !firebase.auth().currentUser) return Promise.reject(new Error('Sign in to update notifications.'));
+  return firebase.firestore().collection('notifications').doc(notification.id).set({ isRead: true }, { merge: true }).then(markLocally);
+};
+
+window.FNAdmin.markAllNotificationsRead = function(notifications) {
+  return Promise.all((notifications || []).filter((item) => item.isRead !== true).map((item) => this.markNotificationRead(item)));
+};
+
+window.FNAdmin.stopBookingSlotSubscription = function() {
+  if (this.bookingSlotUnsubscriber) this.bookingSlotUnsubscriber();
+  this.bookingSlotUnsubscriber = null;
+  this.bookingSlotSubscriptionKey = '';
+  this.state.bookingSlots = [];
+};
+
+window.FNAdmin.subscribeToBookingSlots = function(courtId, date) {
+  const subscriptionKey = courtId && date ? courtId + '|' + date : '';
+  if (this.bookingSlotSubscriptionKey === subscriptionKey && this.bookingSlotUnsubscriber) return;
+  this.stopBookingSlotSubscription();
+  if (!subscriptionKey || this.demoMode || !window.firebase || !firebase.firestore || !firebase.auth || !firebase.auth().currentUser) return;
+
+  this.bookingSlotSubscriptionKey = subscriptionKey;
+  this.bookingSlotUnsubscriber = firebase.firestore().collection('bookingSlots')
+    .where('courtId', '==', courtId)
+    .where('date', '==', date)
+    .onSnapshot((snapshot) => {
+      this.state.bookingSlots = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      window.dispatchEvent(new CustomEvent('fn:booking-slots-changed', { detail: { courtId, date } }));
+    }, (error) => {
+      console.error('Unable to subscribe to booking slot updates:', error.message);
+      window.dispatchEvent(new CustomEvent('fn:bookings-error', { detail: error }));
+    });
+};
+
 window.FNAdmin.subscribeToBookings = function() {
   if (this.demoMode || !window.firebase || !firebase.firestore) return;
   this.listeners.forEach((unsubscribe) => unsubscribe());
   this.listeners = [];
   const role = window.FNAdminAuth && window.FNAdminAuth.getRole();
+  if (role === 'User' && window.FNUserPortal) window.FNUserPortal.subscribeToSelectedSlot();
   if (role === 'Owner') {
     const owner = window.FNAdminAuth.user;
     const courts = (this.state.courts || []).filter((court) => court.ownerId === owner.uid || court.owner === owner.name);
     courts.forEach((court) => {
       const unsubscribe = firebase.firestore().collection('bookings').where('courtId', '==', court.id).onSnapshot((snapshot) => {
+        this.state.liveCollections = this.state.liveCollections || {};
+        this.state.liveCollections.bookings = true;
         const otherBookings = (this.state.bookings || []).filter((booking) => booking.courtId !== court.id);
         this.state.bookings = otherBookings.concat(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
         window.dispatchEvent(new CustomEvent('fn:bookings-changed', { detail: { courtId: court.id } }));
       }, (error) => {
+        this.state.liveCollections = this.state.liveCollections || {};
+        this.state.liveCollections.bookings = false;
         console.error('Unable to subscribe to owner bookings:', error.message);
         window.dispatchEvent(new CustomEvent('fn:bookings-error', { detail: error }));
       });
@@ -306,9 +629,13 @@ window.FNAdmin.subscribeToBookings = function() {
     query = query.where('userId', '==', window.FNAdminAuth.user.uid);
   }
   const unsubscribe = query.onSnapshot((snapshot) => {
+    this.state.liveCollections = this.state.liveCollections || {};
+    this.state.liveCollections.bookings = true;
     this.state.bookings = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     window.dispatchEvent(new CustomEvent('fn:bookings-changed'));
   }, (error) => {
+    this.state.liveCollections = this.state.liveCollections || {};
+    this.state.liveCollections.bookings = false;
     console.error('Unable to subscribe to booking updates:', error.message);
     window.dispatchEvent(new CustomEvent('fn:bookings-error', { detail: error }));
   });
@@ -347,13 +674,16 @@ window.FNAdmin.createBookingNotification = function(booking, title, message) {
     title,
     message,
     target: 'Users',
+    targetRole: 'User',
     courtId: booking.courtId || '',
     targetUserId: booking.userId || (targetUser && targetUser.id) || '',
     targetUserEmail: booking.userEmail || (targetUser && targetUser.email) || '',
     userId: booking.userId || (targetUser && targetUser.id) || '',
     date: new Date().toISOString(),
+    createdAt: Date.now(),
+    isRead: false,
     status: 'Sent',
-    type: 'booking'
+    type: /confirm/i.test(title) ? 'booking_confirmed' : /cancel/i.test(title) ? 'booking_cancelled' : /reschedul/i.test(title) ? 'booking_rescheduled' : 'booking'
   };
 
   if (this.demoMode || !window.FNAdminData.isLive()) {

@@ -124,7 +124,8 @@
   .user-booking-item .booking-price,
   .user-booking-item .booking-cancel,
   .user-booking-item .booking-review,
-  .user-booking-item .booking-reschedule {
+  .user-booking-item .booking-reschedule,
+  .user-booking-item .booking-delete {
     margin: 0;
   }
 

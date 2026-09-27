@@ -62,6 +62,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.FNAdminAuth.isAuthenticated() && window.FNAdminAuth.getRole() === 'Admin') {
       window.FNAdminBookings.render();
       window.FNAdminDashboard.renderStats();
+      window.FNAdminDashboard.setupCharts();
+      window.FNAdminReports.render();
     }
     if (window.FNAdminAuth.getRole() === 'User' && window.FNUserPortal) {
       window.FNUserPortal.renderBookings();
@@ -72,6 +74,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.FNAdminAuth.getRole() === 'Owner' && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
   window.addEventListener('fn:bookings-error', () => window.FNAdminComponents.showToast('Live booking updates are temporarily unavailable.', 'error'));
+  window.addEventListener('fn:booking-slots-changed', function() {
+    if (window.FNAdminAuth.getRole() !== 'User' || !window.FNUserPortal) return;
+    window.FNUserPortal.updateTimeSlots();
+    window.FNUserPortal.updateAmount();
+  });
   window.addEventListener('fn:collection-changed', function(event) {
     const collection = event.detail && event.detail.collection;
     if (window.FNAdminAuth.getRole() === 'Admin') window.FNAdminApp.renderAll();

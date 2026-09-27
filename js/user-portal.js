@@ -28,31 +28,65 @@ window.FNUserPortal.renderNotifications = function() {
   if (!list) return;
   const user = window.FNAdminAuth.user;
   const expiryLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
-  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => {
-    const target = String(item.target || '').toLowerCase();
-    const belongsToUser = user && (item.userId === user.uid || item.targetUserId === user.uid || item.targetUserEmail === user.email);
-    const userUpdate = item.type === 'booking' || item.type === 'tournament';
-    return new Date(item.date || 0).getTime() >= expiryLimit && userUpdate && belongsToUser;
-  });
+  const notifications = window.FNAdmin.getNotificationsForRole('User').filter((item) => new Date(item.date || 0).getTime() >= expiryLimit);
+  const unreadCount = notifications.filter((item) => item.isRead !== true).length;
+  const badge = document.getElementById('userNotificationsCount');
+  const summary = document.getElementById('userNotificationSummary');
+  const preview = document.getElementById('userNotificationPreview');
+  if (badge) badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+  if (summary) summary.textContent = unreadCount + ' unread';
+  if (preview) preview.innerHTML = notifications.length ? notifications.slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)).slice(0, 5).map((item) => '<article class="owner-notification-preview-item' + (item.isRead === true ? '' : ' notification-unread') + '"><strong>' + this.escapeHtml(item.title) + '</strong><p>' + this.escapeHtml(item.message) + '</p><small>' + new Date(item.date || item.createdAt).toLocaleString() + '</small></article>').join('') : '<p class="owner-notification-empty">No notifications yet.</p>';
   list.innerHTML = notifications.length ? notifications.map((item) => {
     const canDelete = user && (item.userId === user.uid || item.targetUserId === user.uid || item.targetUserEmail === user.email);
-    return '<article class="user-notification"><div class="notification-item-heading"><strong>' + item.title + '</strong>' + (canDelete ? '<button class="notification-delete-button" type="button" data-user-notification-delete="' + item.id + '" title="Delete notification" aria-label="Delete notification"><i class="fa-solid fa-trash"></i></button>' : '') + '</div><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>';
+    return '<article class="user-notification' + (item.isRead === true ? '' : ' notification-unread') + '"><div class="notification-item-heading"><strong>' + this.escapeHtml(item.title) + '</strong><span>' + (item.isRead === true ? '' : '<button class="notification-read-button" type="button" data-read-user-notification="' + item.id + '" title="Mark as read">Mark read</button>') + (canDelete ? '<button class="notification-delete-button" type="button" data-user-notification-delete="' + item.id + '" title="Delete notification" aria-label="Delete notification"><i class="fa-solid fa-trash"></i></button>' : '') + '</span></div><p>' + this.escapeHtml(item.message) + '</p><small>' + new Date(item.date || item.createdAt).toLocaleString() + '</small></article>';
   }).join('') : '<p class="muted">No new notifications.</p>';
   list.querySelectorAll('[data-user-notification-delete]').forEach((button) => button.addEventListener('click', () => this.deleteNotification(button.dataset.userNotificationDelete)));
+  list.querySelectorAll('[data-read-user-notification]').forEach((button) => button.addEventListener('click', () => this.markNotificationRead(button.dataset.readUserNotification)));
+  this.renderNotificationBell();
   window.FNAdmin.cleanupExpiredNotifications().catch((error) => console.error('Unable to remove expired notifications:', error));
+};
+
+window.FNUserPortal.markNotificationRead = function(notificationId) {
+  const notification = (window.FNAdmin.state.notifications || []).find((item) => item.id === notificationId);
+  return window.FNAdmin.markNotificationRead(notification).then(() => this.renderNotifications()).catch((error) => window.FNAdminComponents.showToast('Notification could not be updated: ' + error.message, 'error'));
+};
+
+window.FNUserPortal.markAllNotificationsRead = function() {
+  return window.FNAdmin.markAllNotificationsRead(window.FNAdmin.getNotificationsForRole('User')).then(() => this.renderNotifications()).catch((error) => window.FNAdminComponents.showToast('Notifications could not be updated: ' + error.message, 'error'));
+};
+
+window.FNUserPortal.renderNotificationBell = function() {
+  const button = document.getElementById('userNotificationsBtn');
+  const dropdown = document.getElementById('userNotificationDropdown');
+  if (!button || !dropdown || button.dataset.fnInitialized === 'true') return;
+  button.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const isHidden = dropdown.classList.toggle('is-hidden');
+    button.setAttribute('aria-expanded', String(!isHidden));
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.user-notification-menu')) {
+      dropdown.classList.add('is-hidden');
+      button.setAttribute('aria-expanded', 'false');
+    }
+  });
+  const viewAll = document.getElementById('viewUserNotificationsBtn');
+  if (viewAll) viewAll.addEventListener('click', () => {
+    dropdown.classList.add('is-hidden');
+    document.getElementById('userNotificationsPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  const markDropdown = document.getElementById('markUserNotificationsReadBtn');
+  const markPanel = document.getElementById('markUserAllReadBtn');
+  if (markDropdown) markDropdown.addEventListener('click', () => this.markAllNotificationsRead());
+  if (markPanel) markPanel.addEventListener('click', () => this.markAllNotificationsRead());
+  button.dataset.fnInitialized = 'true';
 };
 
 window.FNUserPortal.readImageFile = function(file) {
   if (!file) return Promise.resolve('');
   if (!['image/jpeg', 'image/png'].includes(file.type)) return Promise.reject(new Error('Please choose a JPG or PNG image.'));
   if (file.size > 5 * 1024 * 1024) return Promise.reject(new Error('Profile image must be 5 MB or smaller.'));
-  if (window.FNAdminData.isLive()) return window.FNAdminData.uploadAsset(file, 'profiles/' + Date.now() + '-' + file.name);
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Unable to read the selected image.'));
-    reader.readAsDataURL(file);
-  });
+  return window.FNAdminData.uploadAsset(file, 'profiles/' + Date.now() + '-' + file.name);
 };
 
 window.FNUserPortal.renderProfile = function() {
@@ -65,7 +99,7 @@ window.FNUserPortal.renderProfile = function() {
   const fallbackName = user.email ? user.email.split('@')[0].replace(/[._-]+/g, ' ') : 'player';
   const name = profile.name && profile.name !== profile.email ? profile.name : (user.name && user.name !== user.email ? user.name : fallbackName);
   const initials = name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = window.FNAdmin.getNepalDateTime().date;
   const upcomingBookings = this.getUserBookings().filter((booking) => booking.date >= today && !['Cancelled', 'Rejected'].includes(booking.bookingStatus)).length;
   const imageUrl = profile.photoURL || profile.photoUrl || (typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? profile.avatar : '');
   const identityImage = imageUrl ? '<img class="user-profile-image" src="' + imageUrl + '" alt="' + name + ' profile" />' : '<div class="owner-profile-avatar">' + initials + '</div>';
@@ -114,15 +148,17 @@ window.FNUserPortal.updateTimeSlots = function() {
   const closingMinutes = this.toMinutes(selectedCourt?.closingTime || '22:00');
   const slotDuration = Number(selectedCourt?.slotDuration || 60);
   const date = document.getElementById('userBookingDate') ? document.getElementById('userBookingDate').value : '';
+  const nepalNow = window.FNAdmin.getNepalDateTime();
   const blockedSlots = selectedCourt && Array.isArray(selectedCourt.blockedSlots) ? selectedCourt.blockedSlots : [];
   timeSelect.innerHTML = '';
   for (let start = openingMinutes; start + slotDuration <= closingMinutes; start += slotDuration) {
     const end = start + slotDuration;
     const startTime = this.toTime(start);
     const endTime = this.toTime(end);
+    const expired = date < nepalNow.date || (date === nepalNow.date && start <= nepalNow.minutes);
     const option = document.createElement('option');
     const slotKey = date + ' | ' + startTime + ' - ' + endTime;
-    const matchingBooking = (window.FNAdmin.state.bookings || []).find((item) => window.FNAdmin.isBookingActive(item)
+    const matchingBooking = [...(window.FNAdmin.state.bookings || []), ...(window.FNAdmin.state.bookingSlots || [])].find((item) => window.FNAdmin.isBookingActive(item)
       && item.date === date
       && ((item.courtId && item.courtId === (selectedCourt && selectedCourt.id)) || item.court === (selectedCourt && selectedCourt.name))
       && this.toMinutes(startTime) < this.toMinutes(item.endTime)
@@ -130,15 +166,23 @@ window.FNUserPortal.updateTimeSlots = function() {
     const booked = !!matchingBooking;
     const blocked = blockedSlots.includes(slotKey);
     option.value = startTime + '|' + endTime;
-    const bookingStatus = matchingBooking ? String(matchingBooking.bookingStatus || '') : '';
-    const slotLabel = blocked ? 'Unavailable' : bookingStatus || 'Available';
+    const bookingStatus = matchingBooking ? String(matchingBooking.bookingStatus || '').toLowerCase() : '';
+    const slotLabel = expired ? 'Expired' : blocked ? 'Unavailable' : bookingStatus === 'confirmed' ? 'Booked' : bookingStatus === 'pending' ? 'Pending' : 'Available';
     option.textContent = this.toTimeLabel(startTime) + ' - ' + this.toTimeLabel(endTime) + ' - ' + slotLabel;
-    option.dataset.availability = blocked ? 'unavailable' : bookingStatus.toLowerCase() || 'available';
-    option.disabled = booked || blocked;
+    option.dataset.availability = expired ? 'expired' : blocked ? 'unavailable' : bookingStatus === 'confirmed' ? 'booked' : bookingStatus || 'available';
+    option.disabled = expired || booked || blocked;
     timeSelect.appendChild(option);
   }
   const firstAvailable = Array.from(timeSelect.options).find((option) => !option.disabled);
   if (firstAvailable) timeSelect.value = firstAvailable.value;
+};
+
+window.FNUserPortal.subscribeToSelectedSlot = function() {
+  const courtSelect = document.getElementById('userBookingCourt');
+  const dateInput = document.getElementById('userBookingDate');
+  if (window.FNAdmin && typeof window.FNAdmin.subscribeToBookingSlots === 'function') {
+    window.FNAdmin.subscribeToBookingSlots(courtSelect && courtSelect.value, dateInput && dateInput.value);
+  }
 };
 
 window.FNUserPortal.toMinutes = function(time) {
@@ -194,8 +238,9 @@ window.FNUserPortal.updateAmount = function() {
       const timeSlot = document.getElementById('userBookingTime').value.split('|');
       const startTime = timeSlot[0];
       const conflict = court && window.FNAdmin.hasBookingConflict({ courtId: court.id, court: court.name, date, startTime, endTime: timeSlot[1] });
-      availability.textContent = court ? (conflict ? 'Not available for this time' : 'Available for this time') : '';
-      availability.classList.toggle('unavailable', !!conflict);
+      const expired = court && window.FNAdmin.isBookingTimeExpired({ date, startTime, endTime: timeSlot[1] });
+      availability.textContent = court ? (expired ? 'This time slot has expired (Nepal time)' : conflict ? 'Not available for this time' : 'Available for this time') : '';
+      availability.classList.toggle('unavailable', !!(conflict || expired));
     }
   }
 };
@@ -206,14 +251,23 @@ window.FNUserPortal.renderBookings = function() {
   const next = document.getElementById('userNextBooking');
   if (!list || !count || !next) return;
 
-  const bookings = this.getUserBookings().sort((first, second) => (first.date + first.startTime).localeCompare(second.date + second.startTime));
-  const today = new Date().toISOString().slice(0, 10);
+  const allBookings = this.getUserBookings();
+  const legacyRejectedBookings = allBookings.filter((booking) => booking.bookingStatus === 'Rejected');
+  this.rejectedBookingCleanupIds = this.rejectedBookingCleanupIds || new Set();
+  legacyRejectedBookings.forEach((booking) => {
+    if (this.rejectedBookingCleanupIds.has(booking.id)) return;
+    this.rejectedBookingCleanupIds.add(booking.id);
+    window.FNAdmin.deleteUserBooking(booking).catch((error) => {
+      console.warn('Unable to clean up an older rejected booking:', error.message);
+    });
+  });
+  const bookings = allBookings.filter((booking) => booking.bookingStatus !== 'Rejected').sort((first, second) => (first.date + first.startTime).localeCompare(second.date + second.startTime));
+  const today = window.FNAdmin.getNepalDateTime().date;
   const upcoming = bookings.filter((booking) => booking.date >= today && ['Pending', 'Confirmed'].includes(booking.bookingStatus));
   const groupedBookings = [
     { label: 'Upcoming', items: upcoming },
     { label: 'Completed', items: bookings.filter((booking) => booking.bookingStatus === 'Completed' || (booking.date < today && !['Cancelled', 'Rejected'].includes(booking.bookingStatus))) },
-    { label: 'Cancelled', items: bookings.filter((booking) => booking.bookingStatus === 'Cancelled') },
-    { label: 'Rejected', items: bookings.filter((booking) => booking.bookingStatus === 'Rejected') }
+    { label: 'Cancelled', items: bookings.filter((booking) => booking.bookingStatus === 'Cancelled') }
   ];
   this.updateDashboard();
   count.textContent = upcoming.length + ' upcoming booking' + (upcoming.length === 1 ? '' : 's');
@@ -222,34 +276,49 @@ window.FNUserPortal.renderBookings = function() {
   const renderBooking = (booking) => {
     const existingReview = (window.FNAdmin.state.reviews || []).find((review) => review.bookingId === booking.id || (review.user === booking.user && review.court === booking.court));
     const canReview = ['Confirmed', 'Completed'].includes(booking.bookingStatus) || booking.paymentStatus === 'Paid';
-    const bookingStart = new Date(booking.date + 'T' + booking.startTime);
-    const canCancel = ['Pending', 'Confirmed'].includes(booking.bookingStatus) && Number.isFinite(bookingStart.getTime()) && bookingStart.getTime() - Date.now() > 60 * 60 * 1000;
+    const bookingStart = window.FNAdmin.getNepalTimestamp(booking.date, booking.startTime);
+    const canCancel = ['Pending', 'Confirmed'].includes(booking.bookingStatus) && Number.isFinite(bookingStart) && bookingStart - Date.now() > 60 * 60 * 1000;
     const rescheduleAction = canCancel ? '<button class="booking-reschedule" type="button" data-reschedule-booking-id="' + booking.id + '">Change time</button>' : '';
     const reviewAction = canReview && !existingReview
       ? '<button class="booking-review" type="button" data-review-booking-id="' + booking.id + '">Rate & review</button>'
       : (existingReview ? '<span class="review-status">Reviewed</span>' : '');
-    return '<div class="user-booking-item"><div><strong>' + this.escapeHtml(booking.court) + '</strong><small>' + this.formatDate(booking.date) + ' • ' + this.toTimeLabel(booking.startTime) + ' - ' + this.toTimeLabel(booking.endTime) + '</small><small>Booking ID: ' + this.escapeHtml(booking.id) + ' • ' + booking.bookingStatus + ' • Payment: ' + this.escapeHtml(booking.paymentStatus) + '</small></div><div><span class="booking-price">NPR ' + Number(booking.amount || 0).toLocaleString() + '</span>' + rescheduleAction + (canCancel ? '<button class="booking-cancel" type="button" data-booking-id="' + booking.id + '">Cancel</button>' : '') + reviewAction + '</div></div>';
+    return '<div class="user-booking-item"><div><strong>' + this.escapeHtml(booking.court) + '</strong><small>' + this.formatDate(booking.date) + ' • ' + this.toTimeLabel(booking.startTime) + ' - ' + this.toTimeLabel(booking.endTime) + '</small><small>Booking ID: ' + this.escapeHtml(booking.id) + ' • ' + booking.bookingStatus + ' • Payment: ' + this.escapeHtml(booking.paymentStatus) + '</small></div><div><span class="booking-price">NPR ' + Number(booking.amount || 0).toLocaleString() + '</span>' + rescheduleAction + (canCancel ? '<button class="booking-cancel" type="button" data-booking-id="' + booking.id + '">Cancel</button>' : '') + reviewAction + '<button class="icon-button danger booking-delete" type="button" data-delete-user-booking="' + booking.id + '" title="Delete booking" aria-label="Delete booking at ' + this.escapeHtml(booking.court) + '"><i class="fa-solid fa-trash"></i></button></div></div>';
   };
   list.innerHTML = bookings.length ? groupedBookings.filter((group) => group.items.length).map((group) => '<section class="booking-history-group"><h4>' + group.label + '</h4>' + group.items.map(renderBooking).join('') + '</section>').join('') : '<p class="muted">You have no bookings yet.</p>';
 
   list.querySelectorAll('[data-booking-id]').forEach((button) => button.addEventListener('click', () => {
     const booking = window.FNAdmin.state.bookings.find((item) => item.id === button.dataset.bookingId);
     if (!booking) return;
-    const bookingStart = new Date(booking.date + 'T' + booking.startTime);
-    if (!['Pending', 'Confirmed'].includes(booking.bookingStatus) || !Number.isFinite(bookingStart.getTime()) || bookingStart.getTime() - Date.now() <= 60 * 60 * 1000) {
+    const bookingStart = window.FNAdmin.getNepalTimestamp(booking.date, booking.startTime);
+    if (!['Pending', 'Confirmed'].includes(booking.bookingStatus) || !Number.isFinite(bookingStart) || bookingStart - Date.now() <= 60 * 60 * 1000) {
       this.renderBookings();
       return;
     }
     const proceed = window.confirm('Cancel booking for ' + booking.court + ' on ' + booking.date + '?');
     if (!proceed) return;
     window.FNAdmin.setBookingStatus(booking, 'Cancelled');
-    window.FNAdmin.createBookingNotification(booking, 'Booking cancelled', 'Your booking at ' + booking.court + ' on ' + booking.date + ' has been cancelled.');
     window.FNAdmin.syncBookings(booking)
       .then(() => {
         window.FNAdminComponents.showToast('Booking cancelled.', 'success');
         this.renderBookings();
       })
       .catch(() => window.FNAdminComponents.showToast('Unable to sync the cancellation.', 'error'));
+  }));
+
+  list.querySelectorAll('[data-delete-user-booking]').forEach((button) => button.addEventListener('click', () => {
+    const booking = this.getUserBookings().find((item) => item.id === button.dataset.deleteUserBooking);
+    if (!booking) return;
+    const confirmed = window.confirm('Permanently delete this booking for ' + booking.court + '? Active bookings will be cancelled first and the slot will be released.');
+    if (!confirmed) return;
+    button.disabled = true;
+    window.FNAdmin.deleteUserBooking(booking).then(() => {
+      window.FNAdminComponents.showToast('Booking deleted.', 'success');
+      this.renderBookings();
+    }).catch((error) => {
+      window.FNAdminComponents.showToast(error.message || 'Booking could not be deleted.', 'error');
+    }).finally(() => {
+      if (button.isConnected) button.disabled = false;
+    });
   }));
 
   list.querySelectorAll('[data-review-booking-id]').forEach((button) => button.addEventListener('click', () => {
@@ -490,7 +559,7 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
     const mapLocation = [court.name, location].filter(Boolean).join(', ');
     const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapLocation);
     const mapEmbedUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(mapLocation) + '&output=embed';
-    const imageUrl = (court.images && court.images[0]) || 'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=640&q=80';
+    const imageUrl = (court.images && court.images[0]) || 'https://images.unsplash.com/photo-1630420598913-44208d36f9af?auto=format&fit=crop&w=640&q=80';
     const reviews = this.getCourtReviews(court.name);
     const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length : Number(court.rating || 0);
     const ratingDisplay = averageRating ? '<span class="court-rating"><i class="fa-solid fa-star"></i> ' + averageRating.toFixed(1) + '</span><span class="court-review-count">' + reviews.length + ' review' + (reviews.length === 1 ? '' : 's') + '</span>' : '<span class="court-review-count">No reviews yet</span>';
@@ -666,6 +735,7 @@ window.FNUserPortal.init = function() {
   });
 
   if (courtSelect.dataset.fnInitialized === 'true') {
+    this.subscribeToSelectedSlot();
     this.updateTimeSlots();
     this.updateAmount();
     this.updateDashboard();
@@ -676,18 +746,34 @@ window.FNUserPortal.init = function() {
     return;
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = window.FNAdmin.getNepalDateTime().date;
   dateInput.min = today;
   dateInput.value = today;
+  this.subscribeToSelectedSlot();
   this.updateTimeSlots();
   courtSelect.addEventListener('change', () => {
+    this.subscribeToSelectedSlot();
     this.updateTimeSlots();
     this.updateAmount();
   });
   dateInput.addEventListener('change', () => {
+    this.subscribeToSelectedSlot();
     this.updateTimeSlots();
     this.updateAmount();
   });
+  if (!this.bookingExpiryTimer) {
+    this.bookingExpiryTimer = window.setInterval(() => {
+      if (window.FNAdminAuth.getRole() !== 'User') return;
+      const nepalToday = window.FNAdmin.getNepalDateTime().date;
+      dateInput.min = nepalToday;
+      if (dateInput.value < nepalToday) {
+        dateInput.value = nepalToday;
+        this.subscribeToSelectedSlot();
+      }
+      this.updateTimeSlots();
+      this.updateAmount();
+    }, 30000);
+  }
   timeSelect.addEventListener('change', () => this.updateAmount());
   courtSearch.addEventListener('input', () => {
     const query = courtSearch.value.trim().toLowerCase();
@@ -701,6 +787,7 @@ window.FNUserPortal.init = function() {
       courtSelect.appendChild(option);
     });
     if (!courtSelect.value && courtSelect.options.length) courtSelect.selectedIndex = 0;
+    this.subscribeToSelectedSlot();
     this.updateTimeSlots();
     this.updateAmount();
   });
@@ -749,7 +836,7 @@ window.FNUserPortal.init = function() {
       paymentStatus: 'Pending',
       bookingStatus: 'Pending',
       expiresAt: Date.now() + (10 * 60 * 1000),
-      createdAt: today
+      createdAt: window.FNAdmin.getNepalDateTime().date
     };
     if (submitButton) {
       submitButton.disabled = true;
@@ -775,8 +862,8 @@ window.FNUserPortal.init = function() {
       if (rescheduleId) window.FNAdmin.createBookingNotification(newBooking, 'Booking rescheduled', 'Booking ID ' + newBooking.id + ' is pending for ' + newBooking.court + ' on ' + this.formatDate(newBooking.date) + ', ' + this.toTimeLabel(newBooking.startTime) + ' - ' + this.toTimeLabel(newBooking.endTime) + '.');
       window.FNAdminComponents.showToast(rescheduleId ? 'Booking rescheduled successfully.' : 'Booking request submitted. The venue will confirm it shortly.', 'success');
       form.reset();
-      dateInput.min = today;
-      dateInput.value = today;
+      dateInput.min = window.FNAdmin.getNepalDateTime().date;
+      dateInput.value = dateInput.min;
       courtSelect.value = court.id;
       this.updateTimeSlots();
       this.updateAmount();

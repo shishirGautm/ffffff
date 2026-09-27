@@ -79,11 +79,14 @@ window.FNAdminBookings.handleAction = function(action, bookingId, actionButton) 
       actionButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
     }
     if (window.FNAdmin.hasBookingConflict(booking, booking.id)) {
-      booking.bookingStatus = 'Rejected';
-      window.FNAdminComponents.showToast('Booking rejected: already booked. Please choose another time.', 'error');
-      window.FNAdmin.createBookingNotification(booking, 'Booking rejected', booking.court + ' could not confirm your booking because the time slot is no longer available.');
-      window.FNAdmin.syncBookings(booking).catch((error) => console.error('Unable to release rejected booking:', error));
-      this.render();
+      window.FNAdmin.rejectBooking(booking, booking.court + ' could not confirm your booking because the time slot is no longer available.').then(() => {
+        window.FNAdminComponents.showToast('Booking request rejected and removed because the time is no longer available.', 'error');
+        this.render();
+      }).catch((error) => {
+        console.error('Unable to remove conflicting booking request:', error);
+        window.FNAdminComponents.showToast('Booking request could not be rejected: ' + (error.message || 'unknown error.'), 'error');
+        this.render();
+      });
       return;
     }
     const previousStatus = booking.bookingStatus;
@@ -92,9 +95,7 @@ window.FNAdminBookings.handleAction = function(action, bookingId, actionButton) 
     update.then(() => {
       window.FNAdminComponents.showToast('Booking confirmed.', 'success');
       this.render();
-      return window.FNAdmin.createBookingNotification(booking, 'Booking confirmed', 'Booking ID: ' + booking.id + '. ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + '. Duration: ' + booking.duration + ' minutes. Price: NPR ' + Number(booking.amount || 0).toLocaleString() + '. Booking status: Confirmed. Payment status: ' + booking.paymentStatus + '.').catch((notificationError) => {
-        console.error('Unable to send booking confirmation notification:', notificationError);
-      });
+      return undefined;
     }).catch((error) => {
       booking.bookingStatus = previousStatus;
       console.error('Unable to confirm booking:', error);
@@ -108,14 +109,10 @@ window.FNAdminBookings.handleAction = function(action, bookingId, actionButton) 
     });
     return;
   } else if (action === 'reject') {
-    const previousStatus = booking.bookingStatus;
-    window.FNAdmin.setBookingStatus(booking, 'Rejected');
-    window.FNAdmin.createBookingNotification(booking, 'Booking rejected', 'Booking ID: ' + booking.id + '. ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' was rejected. The slot is available again.');
-    window.FNAdmin.syncBookings(booking).then(() => {
-      window.FNAdminComponents.showToast('Booking rejected and time released.', 'success');
+    window.FNAdmin.rejectBooking(booking).then(() => {
+      window.FNAdminComponents.showToast('Booking request rejected and removed. The time is available again.', 'success');
       this.render();
     }).catch((error) => {
-      booking.bookingStatus = previousStatus;
       window.FNAdminComponents.showToast('Booking could not be rejected: ' + (error.message || 'permission denied.'), 'error');
       this.render();
     });
@@ -127,7 +124,6 @@ window.FNAdminBookings.handleAction = function(action, bookingId, actionButton) 
     window.FNAdminComponents.showToast(booking.paymentMethod + ' payment verified.', 'success');
   } else if (action === 'cancel') {
     window.FNAdmin.setBookingStatus(booking, 'Cancelled');
-    window.FNAdmin.createBookingNotification(booking, 'Booking cancelled', 'Booking ID: ' + booking.id + '. ' + booking.court + ' on ' + booking.date + ', ' + booking.startTime + ' - ' + booking.endTime + ' was cancelled. The slot is available again.');
     window.FNAdminComponents.showToast('Booking cancelled.', 'success');
   }
 

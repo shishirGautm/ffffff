@@ -9,33 +9,48 @@ window.FNOwnerPortal.readImageFile = function(file) {
   if (!file) return Promise.resolve('');
   if (!['image/jpeg', 'image/png'].includes(file.type)) return Promise.reject(new Error('Please choose a JPG or PNG image.'));
   if (file.size > 5 * 1024 * 1024) return Promise.reject(new Error('Profile image must be 5 MB or smaller.'));
-  if (window.FNAdminData.isLive()) return window.FNAdminData.uploadAsset(file, 'profiles/owner-' + Date.now() + '-' + file.name);
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Unable to read the selected image.'));
-    reader.readAsDataURL(file);
-  });
+  return window.FNAdminData.uploadAsset(file, 'profiles/owner-' + Date.now() + '-' + file.name);
 };
 
 window.FNOwnerPortal.renderNotifications = function() {
   const list = document.getElementById('ownerNotificationsList');
   if (!list) return;
-  const owner = window.FNAdminAuth.user || {};
-  const ownerCourts = (window.FNAdmin.state.courts || []).filter((court) => court.ownerId === owner.uid || court.owner === owner.name);
   const expiryLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
-  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => new Date(item.date || 0).getTime() >= expiryLimit && (() => {
-    if (item.target === 'All' || item.target === 'Owners') return true;
-    return item.target === 'Staff' && item.type === 'booking' && ownerCourts.some((court) => court.id === item.courtId || court.name === item.court);
-  })());
-  const notificationMarkup = notifications.length ? notifications.map((item) => '<article class="user-notification"><div class="notification-item-heading"><strong>' + item.title + '</strong><button class="notification-delete-button" type="button" data-owner-notification-delete="' + item.id + '" title="Delete notification" aria-label="Delete notification"><i class="fa-solid fa-trash"></i></button></div><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="muted">No new notifications.</p>';
+  const notifications = window.FNAdmin.getNotificationsForRole('Owner').filter((item) => new Date(item.date || item.createdAt || 0).getTime() >= expiryLimit);
+  const unreadCount = notifications.filter((item) => item.isRead !== true).length;
+  const notificationMarkup = notifications.length ? notifications.map((item) => '<article class="user-notification' + (item.isRead === true ? '' : ' notification-unread') + '"><div class="notification-item-heading"><strong>' + window.FNUserPortal.escapeHtml(item.title) + '</strong><span>' + (item.isRead === true ? '' : '<button class="notification-read-button" type="button" data-read-owner-notification="' + item.id + '" title="Mark as read">Mark read</button>') + '<button class="notification-delete-button" type="button" data-owner-notification-delete="' + item.id + '" title="Delete notification" aria-label="Delete notification"><i class="fa-solid fa-trash"></i></button></span></div><p>' + window.FNUserPortal.escapeHtml(item.message) + '</p><small>' + new Date(item.date || item.createdAt).toLocaleString() + '</small></article>').join('') : '<p class="muted">No new notifications.</p>';
   list.innerHTML = notificationMarkup;
   list.querySelectorAll('[data-owner-notification-delete]').forEach((button) => button.addEventListener('click', () => window.FNAdmin.deleteNotification(button.dataset.ownerNotificationDelete, () => this.renderNotifications())));
+  list.querySelectorAll('[data-read-owner-notification]').forEach((button) => button.addEventListener('click', () => this.markNotificationRead(button.dataset.readOwnerNotification)));
   const preview = document.getElementById('ownerNotificationPreview');
   const summary = document.getElementById('ownerNotificationSummary');
-  if (preview) preview.innerHTML = notifications.length ? notifications.slice(0, 5).map((item) => '<article class="owner-notification-preview-item"><strong>' + item.title + '</strong><p>' + item.message + '</p><small>' + new Date(item.date).toLocaleString() + '</small></article>').join('') : '<p class="owner-notification-empty">No notifications yet.</p>';
-  if (summary) summary.textContent = notifications.length + ' updates';
+  if (preview) preview.innerHTML = notifications.length ? notifications.slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)).slice(0, 5).map((item) => '<article class="owner-notification-preview-item' + (item.isRead === true ? '' : ' notification-unread') + '"><strong>' + window.FNUserPortal.escapeHtml(item.title) + '</strong><p>' + window.FNUserPortal.escapeHtml(item.message) + '</p><small>' + new Date(item.date || item.createdAt).toLocaleString() + '</small></article>').join('') : '<p class="owner-notification-empty">No notifications yet.</p>';
+  if (summary) summary.textContent = unreadCount + ' unread';
+  const badge = document.getElementById('ownerNotificationsCount');
+  if (badge) badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+  this.bindNotificationReadButtons();
   window.FNAdmin.cleanupExpiredNotifications().catch((error) => console.error('Unable to remove expired notifications:', error));
+};
+
+window.FNOwnerPortal.markNotificationRead = function(notificationId) {
+  const notification = (window.FNAdmin.state.notifications || []).find((item) => item.id === notificationId);
+  return window.FNAdmin.markNotificationRead(notification).then(() => this.renderNotifications()).catch((error) => window.FNAdminComponents.showToast('Notification could not be updated: ' + error.message, 'error'));
+};
+
+window.FNOwnerPortal.markAllNotificationsRead = function() {
+  return window.FNAdmin.markAllNotificationsRead(window.FNAdmin.getNotificationsForRole('Owner')).then(() => this.renderNotifications()).catch((error) => window.FNAdminComponents.showToast('Notifications could not be updated: ' + error.message, 'error'));
+};
+
+window.FNOwnerPortal.bindNotificationReadButtons = function() {
+  const markAll = (id) => {
+    const button = document.getElementById(id);
+    if (button && button.dataset.readBound !== 'true') {
+      button.dataset.readBound = 'true';
+      button.addEventListener('click', () => this.markAllNotificationsRead());
+    }
+  };
+  markAll('markOwnerNotificationsReadBtn');
+  markAll('markOwnerAllReadBtn');
 };
 
 window.FNOwnerPortal.renderProfile = function(courts) {
@@ -101,13 +116,12 @@ window.FNOwnerPortal.getBookings = function(courts) {
 
 window.FNOwnerPortal.renderHeaderActions = function(bookings) {
   const pendingCount = bookings.filter((booking) => String(booking.bookingStatus || '').toLowerCase() === 'pending').length;
-  const owner = window.FNAdminAuth.user || {};
-  const ownerCourts = (window.FNAdmin.state.courts || []).filter((court) => court.ownerId === owner.uid || court.owner === owner.name);
-  const notifications = (window.FNAdmin.state.notifications || []).filter((item) => ['All', 'Owners'].includes(item.target) || (item.target === 'Staff' && item.type === 'booking' && ownerCourts.some((court) => court.id === item.courtId || court.name === item.court)));
+  const notifications = window.FNAdmin.getNotificationsForRole('Owner');
   const bookingCount = document.getElementById('ownerBookingRequestsCount');
   const notificationCount = document.getElementById('ownerNotificationsCount');
   if (bookingCount) bookingCount.textContent = pendingCount > 99 ? '99+' : String(pendingCount);
-  if (notificationCount) notificationCount.textContent = notifications.length > 99 ? '99+' : String(notifications.length);
+  const unreadCount = notifications.filter((item) => item.isRead !== true).length;
+  if (notificationCount) notificationCount.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
 };
 
 window.FNOwnerPortal.initHeaderActions = function() {
@@ -143,6 +157,16 @@ window.FNOwnerPortal.initHeaderActions = function() {
   if (viewAll && viewAll.dataset.bound !== 'true') {
     viewAll.dataset.bound = 'true';
     viewAll.addEventListener('click', () => document.getElementById('ownerNotificationsList')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+  const markAll = document.getElementById('markOwnerNotificationsReadBtn');
+  if (markAll && markAll.dataset.readBound !== 'true') {
+    markAll.dataset.readBound = 'true';
+    markAll.addEventListener('click', () => this.markAllNotificationsRead());
+  }
+  const markPanel = document.getElementById('markOwnerAllReadBtn');
+  if (markPanel && markPanel.dataset.readBound !== 'true') {
+    markPanel.dataset.readBound = 'true';
+    markPanel.addEventListener('click', () => this.markAllNotificationsRead());
   }
 };
 
@@ -213,7 +237,8 @@ window.FNOwnerPortal.render = function() {
     const mapLocation = [court.name, location].filter(Boolean).join(', ');
     const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapLocation);
     const mapEmbedUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(mapLocation) + '&output=embed';
-    return '<article class="owner-court-card">' + ((court.images && court.images[0]) ? '<button class="court-image-button" type="button" data-court-image="' + court.images[0] + '" data-court-name="' + court.name + '" aria-label="View ' + court.name + ' image"><img class="court-card-image" src="' + court.images[0] + '" alt="' + court.name + '" /><span><i class="fa-solid fa-expand"></i> View image</span></button>' : '') + '<h3>' + court.name + '</h3><p>' + location + '</p><div class="owner-court-map"><div class="owner-court-map-heading"><strong>' + court.name + '</strong><span>Live location</span></div><iframe src="' + mapEmbedUrl + '" title="Live map for ' + court.name + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + court.name + ' map</a></div><form class="owner-court-form" data-court-id="' + court.id + '"><label>Futsal name<input name="name" value="' + (court.name || '') + '" required /></label><label>Futsal photo<input name="photo" type="file" accept="image/*" /></label><label>Address<input name="address" value="' + (court.address || '') + '" required /></label><label>City<input name="city" value="' + (court.city || '') + '" required /></label><label>District<input name="district" value="' + (court.district || '') + '" /></label><label>Province<input name="province" value="' + (court.province || '') + '" /></label><label>Contact number<input name="contactNumber" value="' + (court.contactNumber || '') + '" /></label><label>Price per hour<input name="pricePerHour" type="number" min="0" value="' + court.pricePerHour + '" required /></label><label>Slot duration (minutes)<input name="slotDuration" type="number" min="30" step="30" value="' + (court.slotDuration || 60) + '" required /></label><label>Blocked slots<input name="blockedSlots" type="text" value="' + (court.blockedSlots || []).join(', ') + '" placeholder="YYYY-MM-DD | HH:MM - HH:MM" /><small>Separate blocked slots with commas.</small></label><label>Court type<select name="type"><option value="Indoor" ' + (court.type === 'Indoor' ? 'selected' : '') + '>Indoor</option><option value="Outdoor" ' + (court.type === 'Outdoor' ? 'selected' : '') + '>Outdoor</option></select></label><label>Turf type<select name="turfType"><option value="Artificial" ' + (court.turfType === 'Artificial' ? 'selected' : '') + '>Artificial</option><option value="Synthetic" ' + (court.turfType === 'Synthetic' ? 'selected' : '') + '>Synthetic</option><option value="Hybrid" ' + (court.turfType === 'Hybrid' ? 'selected' : '') + '>Hybrid</option></select></label><label>Availability<select name="status"><option value="active" ' + (court.status === 'active' ? 'selected' : '') + '>Available</option><option value="inactive" ' + (court.status === 'inactive' ? 'selected' : '') + '>Unavailable</option></select></label><label>Opening time<input name="openingTime" type="time" value="' + (court.openingTime || '08:00') + '" required /></label><label>Closing time<input name="closingTime" type="time" value="' + (court.closingTime || '22:00') + '" required /></label><label class="owner-field-wide">Description<textarea name="description" rows="3">' + (court.description || '') + '</textarea></label><button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save court settings</button></form></article>';
+    const courtImage = (court.images && court.images[0]) || 'https://images.unsplash.com/photo-1630420598913-44208d36f9af?auto=format&fit=crop&w=900&q=80';
+    return '<article class="owner-court-card"><button class="court-image-button" type="button" data-court-image="' + courtImage + '" data-court-name="' + court.name + '" aria-label="View ' + court.name + ' image"><img class="court-card-image" src="' + courtImage + '" alt="' + court.name + '" /><span><i class="fa-solid fa-expand"></i> View image</span></button><h3>' + court.name + '</h3><p>' + location + '</p><div class="owner-court-map"><div class="owner-court-map-heading"><strong>' + court.name + '</strong><span>Live location</span></div><iframe src="' + mapEmbedUrl + '" title="Live map for ' + court.name + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a href="' + mapUrl + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + court.name + ' map</a></div><form class="owner-court-form" data-court-id="' + court.id + '"><label>Futsal name<input name="name" value="' + (court.name || '') + '" required /></label><label>Futsal photo<input name="photo" type="file" accept="image/*" /></label><label>Address<input name="address" value="' + (court.address || '') + '" required /></label><label>City<input name="city" value="' + (court.city || '') + '" required /></label><label>District<input name="district" value="' + (court.district || '') + '" /></label><label>Province<input name="province" value="' + (court.province || '') + '" /></label><label>Contact number<input name="contactNumber" value="' + (court.contactNumber || '') + '" /></label><label>Price per hour<input name="pricePerHour" type="number" min="0" value="' + court.pricePerHour + '" required /></label><label>Slot duration (minutes)<input name="slotDuration" type="number" min="30" step="30" value="' + (court.slotDuration || 60) + '" required /></label><label>Blocked slots<input name="blockedSlots" type="text" value="' + (court.blockedSlots || []).join(', ') + '" placeholder="YYYY-MM-DD | HH:MM - HH:MM" /><small>Separate blocked slots with commas.</small></label><label>Court type<select name="type"><option value="Indoor" ' + (court.type === 'Indoor' ? 'selected' : '') + '>Indoor</option><option value="Outdoor" ' + (court.type === 'Outdoor' ? 'selected' : '') + '>Outdoor</option></select></label><label>Turf type<select name="turfType"><option value="Artificial" ' + (court.turfType === 'Artificial' ? 'selected' : '') + '>Artificial</option><option value="Synthetic" ' + (court.turfType === 'Synthetic' ? 'selected' : '') + '>Synthetic</option><option value="Hybrid" ' + (court.turfType === 'Hybrid' ? 'selected' : '') + '>Hybrid</option></select></label><label>Availability<select name="status"><option value="active" ' + (court.status === 'active' ? 'selected' : '') + '>Available</option><option value="inactive" ' + (court.status === 'inactive' ? 'selected' : '') + '>Unavailable</option></select></label><label>Opening time<input name="openingTime" type="time" value="' + (court.openingTime || '08:00') + '" required /></label><label>Closing time<input name="closingTime" type="time" value="' + (court.closingTime || '22:00') + '" required /></label><label class="owner-field-wide">Description<textarea name="description" rows="3">' + (court.description || '') + '</textarea></label><button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save court settings</button></form></article>';
   }).join('');
 
   panel.querySelectorAll('[data-court-image]').forEach((button) => button.addEventListener('click', () => {
@@ -307,31 +332,35 @@ window.FNOwnerPortal.render = function() {
       return;
     }
     if (button.dataset.ownerBookingAction === 'reject') {
-      window.FNAdmin.setBookingStatus(booking, 'Rejected');
-      window.FNAdmin.syncBookings(booking).then(() => {
+      window.FNAdmin.rejectBooking(booking).then(() => {
         this.render();
-        window.FNAdminComponents.showToast('Booking rejected.', 'success');
+        window.FNAdminComponents.showToast('Booking request rejected and removed. The time is available again.', 'success');
       }).catch((error) => window.FNAdminComponents.showToast('Booking could not be rejected: ' + (error.message || 'permission denied.'), 'error'));
       return;
     }
     if (window.FNAdmin.hasBookingConflict(booking, booking.id)) {
-      window.FNAdmin.setBookingStatus(booking, 'Rejected');
-      window.FNAdmin.syncBookings(booking).then(() => {
+      window.FNAdmin.rejectBooking(booking, 'The futsal could not confirm your booking because this date and time is no longer available.').then(() => {
         this.render();
-        window.FNAdminComponents.showToast('Booking rejected: already booked for this date and time.', 'error');
+        window.FNAdminComponents.showToast('Booking request rejected and removed because the time is no longer available.', 'error');
       }).catch((error) => {
-        console.error('Unable to reject conflicting booking:', error);
-        window.FNAdminComponents.showToast('Booking could not be rejected: ' + (error.message || 'permission denied.'), 'error');
+        console.error('Unable to remove conflicting booking request:', error);
+        window.FNAdminComponents.showToast('Booking request could not be rejected: ' + (error.message || 'permission denied.'), 'error');
       });
       return;
     }
+    const previousStatus = booking.bookingStatus;
     window.FNAdmin.setBookingStatus(booking, 'Confirmed');
     window.FNAdmin.syncBookings(booking).then(() => {
       this.render();
       window.FNAdminComponents.showToast('Booking confirmed.', 'success');
     }).catch((error) => {
+      booking.bookingStatus = previousStatus;
       console.error('Unable to confirm booking:', error);
-      window.FNAdminComponents.showToast('Booking could not be confirmed: ' + (error.message || 'permission denied.'), 'error');
+      const message = error && error.code === 'permission-denied'
+        ? 'Firebase denied owner confirmation. Deploy firebase/firestore.rules for the footshal project, then reload the app.'
+        : 'Booking could not be confirmed: ' + (error.message || 'unknown error.');
+      window.FNAdminComponents.showToast(message, 'error');
+      this.render();
     });
   }));
 };

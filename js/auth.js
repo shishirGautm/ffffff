@@ -76,12 +76,13 @@ window.FNAdminAuth.login = function(email, password, role = 'admin') {
 
   const account = demoAccounts[role] || demoAccounts.admin;
   if (email === account.email && password === account.password) {
+    window.FNAdmin.demoMode = true;
     this.setUser({ uid: 'demo-' + account.displayRole.toLowerCase(), email, name: account.name, role: account.displayRole });
     if (!window.FNAdmin.state) window.FNAdmin.state = {};
     window.FNAdmin.state.bookings = window.FNAdmin.state.bookings || [];
     window.FNAdmin.state.courts = window.FNAdmin.state.courts || [];
     window.FNAdmin.state.notifications = window.FNAdmin.state.notifications || [];
-    window.FNAdminComponents.showToast('Welcome back, ' + account.name + '.', 'success');
+    window.FNAdminComponents.showToast('Welcome back, ' + account.name + '. Demo mode is active for local testing.', 'success');
     return Promise.resolve(true);
   }
 
@@ -212,7 +213,10 @@ window.FNAdminAuth.register = function(name, email, password, role) {
 };
 
 window.FNAdminAuth.logout = function() {
-  if (!window.FNAdmin.demoMode && window.firebase && firebase.auth) firebase.auth().signOut();
+  const hadDemoMode = !!(window.FNAdmin && window.FNAdmin.demoMode);
+  if (window.FNAdmin) window.FNAdmin.demoMode = false;
+  if (window.FNAdmin && window.FNAdmin.stopBookingSlotSubscription) window.FNAdmin.stopBookingSlotSubscription();
+  if (!hadDemoMode && window.firebase && firebase.auth) firebase.auth().signOut();
   if (window.FNAdmin.listeners) {
     window.FNAdmin.listeners.forEach((unsubscribe) => unsubscribe());
     window.FNAdmin.listeners = [];

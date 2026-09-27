@@ -6,7 +6,7 @@ window.FNAdminCourts.getRows = function(searchTerm) {
   const filtered = !query ? courts : courts.filter((court) => [court.name, court.city, court.address].join(' ').toLowerCase().includes(query));
 
   return filtered.map((court) => [
-    '<img class="court-thumb" src="' + ((court.images && court.images[0]) || 'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=120&q=80') + '" alt="' + court.name + '" />',
+    '<img class="court-thumb" src="' + ((court.images && court.images[0]) || 'https://images.unsplash.com/photo-1630420598913-44208d36f9af?auto=format&fit=crop&w=120&q=80') + '" alt="' + court.name + '" />',
     '<div class="table-court"><div><strong>' + court.name + '</strong><small>' + court.owner + '</small></div></div>',
     court.city + '<br><small>' + court.address + '</small>',
     'NPR ' + Number(court.pricePerHour || 0).toLocaleString(),
