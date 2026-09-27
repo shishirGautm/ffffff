@@ -142,6 +142,15 @@
 }
 
 @media (max-width: 640px) {
+  .install-app-button {
+    min-height: 42px;
+    padding: 0 14px;
+    right: 12px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+  .install-app-button span { display: none; }
+  .install-app-button i { font-size: 1.1rem; }
+
   .auth-screen { padding: 14px; align-items: start; }
   .auth-card { margin: auto 0; padding: 24px 18px; border-radius: 20px; }
   .access-toggle { grid-template-columns: 1fr; }
@@ -163,10 +172,6 @@
   .topbar__actions .user-menu { display: none; }
   .topbar__actions .icon-btn,
   .topbar__actions .theme-toggle { flex: 0 0 40px; }
-  .topbar__actions > .install-app-button { flex: 0 0 40px; width: 40px; height: 40px; margin: 0; padding: 0; justify-content: center; }
-  .topbar__actions > .install-app-button span { display: none; }
-  .topbar__actions > .install-app-button i { width: 24px; height: 24px; }
-
   .content-wrap { padding: 16px 14px 28px; }
   .section-toolbar,
   .table-controls,
@@ -210,7 +215,6 @@
   .user-header-actions { width: 100%; justify-content: flex-end; }
   .owner-header-actions { width: 100%; justify-content: stretch; }
   .owner-header-action { flex: 1; justify-content: center; }
-  .owner-header-actions .install-app-button { flex: 0 0 auto; }
   .owner-header-actions > .btn { flex: 0 0 auto; }
   .user-header h2 { font-size: 1.35rem; }
   .user-top-nav-bar { margin-right: -2px; margin-left: -2px; }

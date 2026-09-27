@@ -118,6 +118,13 @@ window.FNUserPortal.renderProfile = function() {
   }
 };
 
+window.FNUserPortal.getPublicTeams = function() {
+  return (window.FNAdmin.state.teams || []).filter((team) => {
+    const status = String(team.status || '').toLowerCase();
+    return status === 'approved' || status === 'active';
+  });
+};
+
 window.FNUserPortal.updateDashboard = function() {
   const userName = document.getElementById('userDisplayName');
   const greeting = document.getElementById('userGreetingText');
@@ -131,7 +138,32 @@ window.FNUserPortal.updateDashboard = function() {
     userName.textContent = user.name && user.name !== user.email ? user.name : fallbackName;
   }
   if (venueCount) venueCount.textContent = window.FNAdmin.state.courts.filter((court) => court.status === 'active').length + ' venues';
-  if (teamCount) teamCount.textContent = (window.FNAdmin.state.teams || []).length + ' teams';
+  if (teamCount) teamCount.textContent = this.getPublicTeams().length + ' teams';
+};
+
+window.FNUserPortal.renderTeams = function() {
+  const list = document.getElementById('userTeamsList');
+  if (!list) return;
+
+  const teams = this.getPublicTeams();
+  if (!teams.length) {
+    list.innerHTML = '<div class="empty-state"><i class="fa-solid fa-people-group"></i><h3>No teams available</h3><p>Approved community teams will appear here.</p></div>';
+    return;
+  }
+
+  list.innerHTML = teams.map((team) => {
+    const memberCount = Array.isArray(team.members) ? team.members.length : Number(team.members || 0);
+    const record = Number(team.wins || 0) + ' wins · ' + Number(team.losses || 0) + ' losses';
+    return '<article class="user-team-card">' +
+      '<div class="user-team-card__header"><div><p class="eyebrow text-green">Community team</p><h4>' + this.escapeHtml(team.name || 'Untitled team') + '</h4></div><span class="status-badge ' + this.escapeHtml(String(team.status || 'approved').toLowerCase()) + '">' + this.escapeHtml(team.status || 'Approved') + '</span></div>' +
+      '<div class="user-team-card__details">' +
+      '<span><i class="fa-solid fa-user"></i><strong>Captain</strong> ' + this.escapeHtml(team.captain || 'Not listed') + '</span>' +
+      '<span><i class="fa-solid fa-people-group"></i><strong>Members</strong> ' + (Number.isFinite(memberCount) ? memberCount : 0) + '</span>' +
+      '<span><i class="fa-solid fa-location-dot"></i><strong>Location</strong> ' + this.escapeHtml(team.location || 'Not listed') + '</span>' +
+      '<span><i class="fa-solid fa-trophy"></i><strong>Record</strong> ' + this.escapeHtml(record) + '</span>' +
+      '<span><i class="fa-regular fa-calendar-check"></i><strong>Matches played</strong> ' + Number(team.matchesPlayed || 0) + '</span>' +
+      '</div></article>';
+  }).join('');
 };
 
 window.FNUserPortal.formatDate = function(date) {
@@ -741,6 +773,7 @@ window.FNUserPortal.init = function() {
     this.updateDashboard();
     this.renderNotifications();
     this.renderCourtDirectory();
+    this.renderTeams();
     this.renderTournaments();
     this.renderMyTournaments();
     return;
@@ -793,6 +826,7 @@ window.FNUserPortal.init = function() {
   });
   this.updateAmount();
   this.renderCourtDirectory();
+  this.renderTeams();
   this.renderTournaments();
   this.renderMyTournaments();
   this.renderNotifications();

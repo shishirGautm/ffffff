@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('fn:collection-changed', function(event) {
     const collection = event.detail && event.detail.collection;
     if (window.FNAdminAuth.getRole() === 'Admin') window.FNAdminApp.renderAll();
-    if (window.FNAdminAuth.getRole() === 'User' && ['courts', 'reviews', 'notifications', 'tournaments'].includes(collection) && window.FNUserPortal) window.FNUserPortal.init();
+    if (window.FNAdminAuth.getRole() === 'User' && ['courts', 'reviews', 'notifications', 'teams', 'tournaments'].includes(collection) && window.FNUserPortal) window.FNUserPortal.init();
     if (window.FNAdminAuth.getRole() === 'Owner' && ['courts', 'bookings', 'notifications'].includes(collection) && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
   window.addEventListener('fn:courts-changed', function() {

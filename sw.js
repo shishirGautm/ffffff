@@ -1,10 +1,11 @@
-const CACHE_NAME = 'futsal-nepal-shell-v5';
+const CACHE_NAME = 'futsal-nepal-shell-v6';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/style.css?v=20260927-1',
+  './css/style.css?v=20260927-2',
   './css/responsive.css?v=20260912',
+  './js/install.js?v=20260927-1',
   './assets/logo.svg',
   './assets/favicon.svg'
 ];

@@ -187,42 +187,7 @@ img { max-width: 100%; display: block; }
   font-size: 0.66rem;
 }
 
-.install-app-button {
-  display: inline-flex;
-  align-self: flex-end;
-  align-items: center;
-  gap: 8px;
-  margin: 14px 0 0 auto;
-  padding: 9px 12px;
-  border: 1px solid rgba(255,255,255,0.35);
-  border-radius: 10px;
-  background: linear-gradient(135deg, #004d35 0%, #00b95a 100%);
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 800;
-  box-shadow: 0 8px 18px rgba(0, 77, 53, 0.2);
-}
-
-.install-app-button i {
-  display: inline-grid;
-  width: 20px;
-  height: 20px;
-  place-items: center;
-  border-radius: 50%;
-  background: #fff;
-  color: var(--green);
-  font-size: 0.68rem;
-}
-
-.install-app-button:hover { border-color: #fff; background: linear-gradient(135deg, #003b27 0%, #00c853 100%); transform: translateY(-1px); }
-.install-app-button[hidden] { display: none; }
 .user-header-actions { display: flex; align-items: center; gap: 8px; }
-.user-header-actions .install-app-button { margin: 0; }
-.install-app-icon { width: auto; min-height: 42px; justify-content: center; padding: 9px 12px; margin: 0; }
-.install-app-icon i { width: 24px; height: 24px; font-size: 0.78rem; }
-.install-app-icon span { display: inline; }
-.user-header-actions .install-app-icon,
-.owner-header-actions .install-app-icon { display: inline-flex !important; visibility: visible; }
 
 .demo-note {
   margin-top: 14px;
@@ -240,6 +205,36 @@ img { max-width: 100%; display: block; }
 .user-back-to-top { position: fixed; right: 24px; bottom: 24px; z-index: 30; display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; background: var(--sidebar); color: #fff; box-shadow: 0 12px 24px rgba(0, 58, 38, 0.2); opacity: 0; pointer-events: none; transform: translateY(10px); transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease; }
 .user-back-to-top.is-visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 .user-back-to-top:hover { background: var(--green); }
+
+.install-app-button {
+  position: fixed;
+  right: 24px;
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(0, 77, 53, 0.28);
+  font-weight: 800;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.install-app-button.is-dragging {
+  cursor: grabbing;
+  transform: scale(1.03);
+}
+.install-app-button:hover { background: var(--sidebar); transform: translateY(-2px); box-shadow: 0 16px 32px rgba(0, 77, 53, 0.32); }
+.install-app-button:focus-visible { outline: 3px solid rgba(0, 185, 90, 0.35); outline-offset: 3px; }
+.install-app-button[hidden] { display: none; }
 
 #ownerSection { padding: 32px 24px; }
 
@@ -579,6 +574,35 @@ img { max-width: 100%; display: block; }
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 14px;
 }
+
+.user-teams-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.user-team-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(18, 54, 41, 0.08);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,246,242,0.94));
+  box-shadow: 0 12px 26px rgba(16, 30, 25, 0.05);
+}
+
+.user-team-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.user-team-card__header h4 { margin: 8px 0 0; color: #0b2a1d; font-size: 1.1rem; }
+.user-team-card__details { display: grid; gap: 9px; color: #53635a; font-size: 0.82rem; }
+.user-team-card__details span { display: flex; align-items: center; gap: 8px; }
+.user-team-card__details i { width: 16px; color: var(--green); text-align: center; }
+.user-team-card__details strong { color: #10251c; }
 
 .user-tournament-card,
 .user-my-tournament-card {
@@ -2384,4 +2408,138 @@ textarea { min-height: 112px; resize: vertical; }
   .stats-grid {
     grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
+}
+
+body.dark-mode {
+  --muted: #b2c3ba;
+  --border: rgba(206, 230, 216, 0.16);
+  --green-soft: rgba(0, 185, 90, 0.2);
+}
+
+body.dark-mode #app-shell {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body.dark-mode #app-shell .topbar {
+  background: rgba(16, 27, 23, 0.94);
+  border-bottom-color: var(--border);
+}
+
+body.dark-mode #app-shell .hero-card,
+body.dark-mode #app-shell .stat-card,
+body.dark-mode #app-shell .panel,
+body.dark-mode #app-shell .data-card,
+body.dark-mode #app-shell .tournament-card,
+body.dark-mode #app-shell .empty-state {
+  border-color: var(--border);
+  background: linear-gradient(180deg, #192a23, #14221c);
+  color: var(--text);
+}
+
+body.dark-mode #app-shell .hero-card p,
+body.dark-mode #app-shell .stat-card h3,
+body.dark-mode #app-shell .stat-meta,
+body.dark-mode #app-shell .rank-item small,
+body.dark-mode #app-shell .tournament-card__meta,
+body.dark-mode #app-shell .tournament-card__description,
+body.dark-mode #app-shell .tournament-card__stats small {
+  color: var(--muted);
+}
+
+body.dark-mode #app-shell .hero-card h2,
+body.dark-mode #app-shell .stat-card strong,
+body.dark-mode #app-shell .panel__header h3,
+body.dark-mode #app-shell .tournament-card h3,
+body.dark-mode #app-shell .tournament-card__stats strong,
+body.dark-mode #app-shell .rank-item strong,
+body.dark-mode #app-shell .section-toolbar h2,
+body.dark-mode #app-shell tbody td {
+  color: var(--text);
+}
+
+body.dark-mode #app-shell .tournament-card__meta div,
+body.dark-mode #app-shell .detail-list div,
+body.dark-mode #app-shell .rank-item {
+  border-color: var(--border);
+  background: #1b2d25;
+  color: var(--text);
+}
+
+body.dark-mode #app-shell thead th {
+  background: #1b2d25;
+  color: var(--muted);
+}
+
+body.dark-mode #app-shell tbody tr:hover {
+  background: rgba(0, 185, 90, 0.08);
+}
+
+body.dark-mode #app-shell input,
+body.dark-mode #app-shell select,
+body.dark-mode #app-shell textarea,
+body.dark-mode #app-shell .icon-button {
+  border-color: var(--border);
+  background-color: #14221c;
+  color: var(--text);
+}
+
+body.dark-mode #app-shell input::placeholder,
+body.dark-mode #app-shell textarea::placeholder {
+  color: #9aafa3;
+  opacity: 1;
+}
+
+body.dark-mode #app-shell .btn-secondary,
+body.dark-mode #app-shell .user-menu {
+  border-color: var(--border);
+  background: #1b2d25;
+  color: var(--text);
+}
+
+body.dark-mode #app-shell .status-badge.pending { color: #ffd18a; }
+body.dark-mode #app-shell .status-badge.confirmed,
+body.dark-mode #app-shell .status-badge.paid,
+body.dark-mode #app-shell .status-badge.active,
+body.dark-mode #app-shell .status-badge.live { color: #76e8a1; }
+body.dark-mode #app-shell .status-badge.cancelled,
+body.dark-mode #app-shell .status-badge.rejected,
+body.dark-mode #app-shell .status-badge.failed { color: #ff9b96; }
+body.dark-mode #app-shell .status-badge.completed { color: #8cc8ff; }
+body.dark-mode #app-shell .status-badge.refunded { color: #c0c8d2; }
+body.dark-mode #app-shell .status-badge.inactive,
+body.dark-mode #app-shell .status-badge.disabled { color: #b2c3ba; }
+
+body.dark-mode #app-shell .change-pill {
+  color: #76e8a1;
+}
+
+body.dark-mode #app-shell .change-pill.negative {
+  color: #ff9b96;
+}
+
+body.dark-mode .modal__pane {
+  border: 1px solid var(--border);
+  background: #16241f;
+  color: var(--text);
+}
+
+body.dark-mode .modal__pane .detail-list div {
+  border-color: var(--border);
+  background: #1b2d25;
+  color: var(--text);
+}
+
+body.dark-mode .modal__pane input,
+body.dark-mode .modal__pane select,
+body.dark-mode .modal__pane textarea {
+  border-color: var(--border);
+  background: #101b17;
+  color: var(--text);
+}
+
+body.dark-mode .modal__pane input::placeholder,
+body.dark-mode .modal__pane textarea::placeholder {
+  color: #9aafa3;
+  opacity: 1;
 }

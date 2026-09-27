@@ -26,7 +26,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="css/style.css?v=20260927-1" />
+    <link rel="stylesheet" href="css/style.css?v=20260927-2" />
     <link rel="stylesheet" href="css/responsive.css?v=20260912" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -38,7 +38,6 @@
     <div id="authScreen" class="auth-screen">
       <div class="auth-card">
         <div class="brand-badge">FUTSAL NEPAL</div>
-        <button class="install-app-button" id="installAppBtn" data-install-app type="button"><i class="fa-solid fa-download"></i><span>Install app</span></button>
         <p class="eyebrow">Access portal</p>
         <h2>Welcome back</h2>
         <p class="muted">Choose your access type and sign in to continue.</p>
@@ -72,7 +71,7 @@
           <label>Full name<input type="text" id="registerName" autocomplete="off" required /></label>
           <label>Email or phone number<input type="email" id="registerEmail" autocomplete="off" required /></label>
           <label>Password<input type="password" id="registerPassword" autocomplete="new-password" minlength="6" required /></label>
-          <label>Account type<select id="registerRole"><option value="User">Player / User</option><option value="Owner">Court Owner</option></select></label>
+          <label>Account type<select id="registerRole"><option value="User">Player / User</option><option value="Owner">Ground Owner</option></select></label>
           <button class="btn btn-primary full-width" type="submit">Create account</button>
           <button class="auth-link" id="showLoginBtn" type="button">Back to login</button>
         </form>
@@ -91,7 +90,7 @@
             <button type="button" data-user-scroll="userProfilePanel"><i class="fa-solid fa-user"></i><span>Profile</span></button>
             <button type="button" data-user-scroll="userBookingsPanel"><i class="fa-regular fa-calendar-check"></i><span>My bookings</span></button>
             <button type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-futbol"></i><span>Find a futsal</span></button>
-            <button type="button" data-user-scroll="userTeamCount"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
+            <button type="button" data-user-scroll="userTeamsPanel"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
             <button type="button" data-user-scroll="userNotificationsPanel"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
             <button type="button" data-user-scroll="userTournamentsPanel"><i class="fa-solid fa-trophy"></i><span>Tournaments</span></button>
             <button type="button" data-user-scroll="userMyTournamentsPanel"><i class="fa-solid fa-list-check"></i><span>My tournaments</span></button>
@@ -105,7 +104,7 @@
             <button type="button" data-user-scroll="userProfilePanel"><i class="fa-solid fa-user"></i><span>Profile</span></button>
             <button type="button" data-user-scroll="userBookingsPanel"><i class="fa-regular fa-calendar-check"></i><span>My bookings</span></button>
             <button type="button" data-user-scroll="userCourtsPanel"><i class="fa-solid fa-futbol"></i><span>Find a futsal</span></button>
-            <button type="button" data-user-scroll="userTeamCount"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
+            <button type="button" data-user-scroll="userTeamsPanel"><i class="fa-solid fa-people-group"></i><span>Teams</span></button>
             <button type="button" data-user-scroll="userNotificationsPanel"><i class="fa-solid fa-bell"></i><span>Notifications</span></button>
             <button type="button" data-user-scroll="userTournamentsPanel"><i class="fa-solid fa-trophy"></i><span>Tournaments</span></button>
             <button type="button" data-user-scroll="userMyTournamentsPanel"><i class="fa-solid fa-list-check"></i><span>My tournaments</span></button>
@@ -129,7 +128,6 @@
                   <button type="button" class="owner-notification-dropdown__footer" id="viewUserNotificationsBtn">View all notifications</button>
                 </div>
               </div>
-              <button class="install-app-button install-app-icon" data-install-app type="button" aria-label="Install app" title="Install app"><i class="fa-solid fa-download"></i><span>Install app</span></button>
               <button class="btn btn-secondary" id="userLogoutBtn" type="button">Logout</button>
             </div>
           </header>
@@ -233,6 +231,15 @@
         </div>
         <div id="userCourtDirectory" class="user-court-directory"></div>
           </section>
+          <section class="user-panel user-teams-panel" id="userTeamsPanel">
+            <div class="panel__header">
+              <div>
+                <p class="eyebrow text-green">Community teams</p>
+                <h3>Futsal teams</h3>
+              </div>
+            </div>
+            <div id="userTeamsList" class="user-teams-list"></div>
+          </section>
           <section class="user-panel user-tournaments-panel" id="userTournamentsPanel">
             <div class="panel__header">
               <div>
@@ -284,7 +291,6 @@
               <button type="button" class="owner-notification-dropdown__footer" id="viewOwnerNotificationsBtn">View all notifications</button>
             </div>
           </div>
-          <button class="install-app-button install-app-icon" data-install-app type="button" aria-label="Install app" title="Install app"><i class="fa-solid fa-download"></i><span>Install app</span></button>
           <button class="btn btn-secondary" id="ownerLogoutBtn" type="button">Logout</button>
         </div>
       </header>
@@ -395,11 +401,10 @@
             <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
               <i class="fa-solid fa-moon"></i>
             </button>
-            <button class="install-app-button" data-install-app type="button"><i class="fa-solid fa-download"></i><span>Install app</span></button>
             <div class="user-menu">
               <div class="avatar-mini">AN</div>
               <div>
-                <strong>Admin Nepal</strong>
+                <strong>Futsal Nepal</strong>
                 <small>Super Admin</small>
               </div>
               <i class="fa-solid fa-chevron-down"></i>
@@ -717,6 +722,9 @@
     </div>
 
     <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+    <button id="installAppButton" class="install-app-button" type="button" aria-label="Install Futsal Nepal app" title="Install app">
+      <i class="fa-solid fa-download" aria-hidden="true"></i><span>Install app</span>
+    </button>
 
     <script type="application/ld+json">
       {
@@ -733,8 +741,9 @@
     <script src="js/firebase-config.js?v=20260927-3"></script>
     <script src="js/firebase-data.js?v=20260927-1"></script>
     <script src="js/components.js"></script>
+    <script src="js/install.js?v=20260927-1"></script>
     <script src="js/auth.js?v=20260913-7"></script>
-    <script src="js/user-portal.js?v=20260927-2"></script>
+    <script src="js/user-portal.js?v=20260927-3"></script>
     <script src="js/owner-portal.js?v=20260927-2"></script>
     <script src="js/dashboard.js?v=20260912-4"></script>
     <script src="js/courts.js?v=20260913-4"></script>
@@ -749,7 +758,7 @@
     <script src="js/reports.js?v=20260927-1"></script>
     <script src="js/admins.js?v=20260912-2"></script>
     <script src="js/settings.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/app.js?v=20260927-2"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
