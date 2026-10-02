@@ -7,14 +7,15 @@ window.FNAdminAuth.setLoading = function(message) {
   const loading = document.getElementById('authLoginLoading');
   if (!loading) return;
   this.loadingOperations += 1;
-  const label = loading.querySelector('span:last-child');
+  const label = loading.querySelector('.auth-login-message');
   if (label) label.textContent = message;
   loading.hidden = false;
+  document.body.classList.add('auth-login-loading-active');
 };
 
 window.FNAdminAuth.updateLoading = function(message) {
   const loading = document.getElementById('authLoginLoading');
-  const label = loading && loading.querySelector('span:last-child');
+  const label = loading && loading.querySelector('.auth-login-message');
   if (label) label.textContent = message;
 };
 
@@ -23,6 +24,7 @@ window.FNAdminAuth.clearLoading = function() {
   if (this.loadingOperations > 0) return;
   const loading = document.getElementById('authLoginLoading');
   if (loading) loading.hidden = true;
+  if (document.body) document.body.classList.remove('auth-login-loading-active');
 };
 
 window.FNAdminAuth.isAuthenticated = function() {
@@ -31,6 +33,30 @@ window.FNAdminAuth.isAuthenticated = function() {
 
 window.FNAdminAuth.getRole = function() {
   return this.user ? this.user.role : null;
+};
+
+window.FNAdminAuth.showLandingPage = function() {
+  const landingPage = document.getElementById('publicLanding');
+  const authScreen = document.getElementById('authScreen');
+  const appShell = document.getElementById('app-shell');
+  const userSection = document.getElementById('userSection');
+  const ownerSection = document.getElementById('ownerSection');
+  if (document.body) document.body.classList.remove('auth-active');
+  if (document.body) document.body.classList.add('public-home');
+  if (landingPage) landingPage.classList.remove('hidden');
+  if (authScreen) authScreen.classList.add('hidden');
+  if (appShell) appShell.classList.add('hidden');
+  if (userSection) userSection.classList.add('hidden');
+  if (ownerSection) ownerSection.classList.add('hidden');
+};
+
+window.FNAdminAuth.openLogin = function(role = 'user') {
+  this.toggleAuthScreens(true);
+  const roleButton = document.querySelector('.access-btn[data-role="' + role + '"]');
+  if (roleButton) roleButton.click();
+  const email = document.getElementById('authLoginEmail');
+  if (email) email.focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.FNAdminAuth.resolveFirebaseProfile = function(firebaseUser) {
@@ -65,11 +91,17 @@ window.FNAdminAuth.resolveFirebaseProfile = function(firebaseUser) {
 };
 
 window.FNAdminAuth.toggleAuthScreens = function(showAuth) {
+  const landingPage = document.getElementById('publicLanding');
   const authScreen = document.getElementById('authScreen');
   const appShell = document.getElementById('app-shell');
   const userSection = document.getElementById('userSection');
   const ownerSection = document.getElementById('ownerSection');
 
+  if (document.body) {
+    document.body.classList.toggle('auth-active', showAuth);
+    document.body.classList.toggle('public-home', !showAuth && !this.isAuthenticated());
+  }
+  if (landingPage) landingPage.classList.toggle('hidden', showAuth || this.isAuthenticated());
   if (authScreen) authScreen.classList.toggle('hidden', !showAuth);
   if (appShell) appShell.classList.toggle('hidden', showAuth || ['User', 'Owner'].includes(this.getRole()));
   if (userSection) userSection.classList.toggle('hidden', showAuth || this.getRole() !== 'User');
@@ -84,6 +116,9 @@ window.FNAdminAuth.setUser = function(user) {
   const userSection = document.getElementById('userSection');
   const ownerSection = document.getElementById('ownerSection');
 
+  const landingPage = document.getElementById('publicLanding');
+  if (document.body) document.body.classList.remove('auth-active', 'public-home');
+  if (landingPage) landingPage.classList.add('hidden');
   if (authScreen) authScreen.classList.add('hidden');
   if (appShell) appShell.classList.toggle('hidden', role === 'User' || role === 'Owner');
   if (userSection) userSection.classList.toggle('hidden', role !== 'User');
@@ -256,15 +291,7 @@ window.FNAdminAuth.logout = function() {
   }
   if (window.FNAdminData) window.FNAdminData.stopSubscriptions();
   this.user = null;
-  const authScreen = document.getElementById('authScreen');
-  const appShell = document.getElementById('app-shell');
-  const userSection = document.getElementById('userSection');
-  const ownerSection = document.getElementById('ownerSection');
-
-  if (authScreen) authScreen.classList.remove('hidden');
-  if (appShell) appShell.classList.add('hidden');
-  if (userSection) userSection.classList.add('hidden');
-  if (ownerSection) ownerSection.classList.add('hidden');
+  this.showLandingPage();
 };
 
 window.FNAdminAuth.init = function() {
@@ -283,6 +310,52 @@ window.FNAdminAuth.init = function() {
         hiddenRoleInput.value = role;
         accessButtons.forEach((btn) => btn.classList.toggle('active', btn === this));
       });
+    });
+  }
+
+  document.querySelectorAll('[data-open-login]').forEach((button) => {
+    button.addEventListener('click', () => this.openLogin(button.dataset.openLogin || 'user'));
+  });
+  document.querySelectorAll('[data-show-landing]').forEach((button) => {
+    button.addEventListener('click', () => this.showLandingPage());
+  });
+  const landingHeader = document.querySelector('.landing-header');
+  const landingMenuToggle = document.querySelector('.landing-menu-toggle');
+  const closeLandingMenu = () => {
+    if (!landingHeader || !landingMenuToggle) return;
+    landingHeader.classList.remove('is-menu-open');
+    landingMenuToggle.setAttribute('aria-expanded', 'false');
+    landingMenuToggle.setAttribute('aria-label', 'Open navigation');
+    landingMenuToggle.innerHTML = '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
+  };
+  if (landingHeader && landingMenuToggle) {
+    landingMenuToggle.addEventListener('click', () => {
+      const isOpen = landingHeader.classList.toggle('is-menu-open');
+      landingMenuToggle.setAttribute('aria-expanded', String(isOpen));
+      landingMenuToggle.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
+      landingMenuToggle.innerHTML = '<i class="fa-solid fa-' + (isOpen ? 'xmark' : 'bars') + '" aria-hidden="true"></i>';
+    });
+    landingHeader.querySelectorAll('.landing-nav a').forEach((link) => {
+      link.addEventListener('click', closeLandingMenu);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeLandingMenu();
+    });
+    document.addEventListener('click', (event) => {
+      if (!event.composedPath().includes(landingHeader)) closeLandingMenu();
+    });
+  }
+
+  const publicSearchForm = document.getElementById('publicSearchForm');
+  if (publicSearchForm) {
+    publicSearchForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      window.FNUserPortal.pendingSearchFilters = {
+        search: document.getElementById('publicSearchLocation').value.trim(),
+        maxPrice: document.getElementById('publicSearchBudget').value,
+        type: document.getElementById('publicSearchType').value
+      };
+      this.openLogin('user');
     });
   }
 
@@ -408,7 +481,7 @@ window.FNAdminAuth.init = function() {
     });
   });
 
-  this.toggleAuthScreens(true);
+  this.showLandingPage();
 
   if (!window.FNAdmin.demoMode && window.firebase && firebase.auth) {
     firebase.auth().onAuthStateChanged((firebaseUser) => {

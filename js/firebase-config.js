@@ -580,22 +580,26 @@ window.FNAdmin.stopBookingSlotSubscription = function() {
   this.bookingSlotUnsubscriber = null;
   this.bookingSlotSubscriptionKey = '';
   this.state.bookingSlots = [];
+  this.state.bookingSlotsLoadedDate = '';
+  this.state.bookingSlotsErrorDate = '';
 };
 
 window.FNAdmin.subscribeToBookingSlots = function(courtId, date) {
-  const subscriptionKey = courtId && date ? courtId + '|' + date : '';
+  const subscriptionKey = date || '';
   if (this.bookingSlotSubscriptionKey === subscriptionKey && this.bookingSlotUnsubscriber) return;
   this.stopBookingSlotSubscription();
   if (!subscriptionKey || this.demoMode || !window.firebase || !firebase.firestore || !firebase.auth || !firebase.auth().currentUser) return;
 
   this.bookingSlotSubscriptionKey = subscriptionKey;
   this.bookingSlotUnsubscriber = firebase.firestore().collection('bookingSlots')
-    .where('courtId', '==', courtId)
     .where('date', '==', date)
     .onSnapshot((snapshot) => {
       this.state.bookingSlots = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      window.dispatchEvent(new CustomEvent('fn:booking-slots-changed', { detail: { courtId, date } }));
+      this.state.bookingSlotsLoadedDate = date;
+      this.state.bookingSlotsErrorDate = '';
+      window.dispatchEvent(new CustomEvent('fn:booking-slots-changed', { detail: { courtId: courtId || null, date } }));
     }, (error) => {
+      this.state.bookingSlotsErrorDate = date;
       console.error('Unable to subscribe to booking slot updates:', error.message);
       window.dispatchEvent(new CustomEvent('fn:bookings-error', { detail: error }));
     });

@@ -4,7 +4,7 @@ window.FNAdmin.state = window.FNAdmin.state || {};
 window.FNAdminApp = {
   renderAll: function() {
     if (!window.FNAdminAuth.isAuthenticated()) {
-      window.FNAdminAuth.toggleAuthScreens(true);
+      window.FNAdminAuth.showLandingPage();
       return;
     }
 
@@ -68,12 +68,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.FNAdminAuth.getRole() === 'User' && window.FNUserPortal) {
       window.FNUserPortal.renderBookings();
       window.FNUserPortal.renderNotifications();
+      window.FNUserPortal.renderCourtDirectory();
       window.FNUserPortal.updateTimeSlots();
       window.FNUserPortal.updateAmount();
     }
     if (window.FNAdminAuth.getRole() === 'Owner' && window.FNOwnerPortal) window.FNOwnerPortal.render();
   });
-  window.addEventListener('fn:bookings-error', () => window.FNAdminComponents.showToast('Live booking updates are temporarily unavailable.', 'error'));
+  window.addEventListener('fn:bookings-error', () => {
+    window.FNAdminComponents.showToast('Live booking updates are temporarily unavailable.', 'error');
+    if (window.FNAdminAuth.getRole() === 'User' && window.FNUserPortal) window.FNUserPortal.renderCourtDirectory();
+  });
   window.addEventListener('fn:collection-error', function(event) {
     if (event.detail && event.detail.collection === 'courts' && window.FNAdminAuth.isAuthenticated()) {
       window.FNAdminComponents.showToast('Live court data could not be loaded. Check Firebase access and connection.', 'error');
@@ -85,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.FNAdminAuth.getRole() !== 'User' || !window.FNUserPortal) return;
     window.FNUserPortal.updateTimeSlots();
     window.FNUserPortal.updateAmount();
+    window.FNUserPortal.renderCourtDirectory();
   });
   window.addEventListener('fn:collection-changed', function(event) {
     const collection = event.detail && event.detail.collection;

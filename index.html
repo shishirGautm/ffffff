@@ -26,8 +26,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-    <link rel="stylesheet" href="css/style.css?v=20260927-13" />
-    <link rel="stylesheet" href="css/responsive.css?v=20260912" />
+    <link rel="stylesheet" href="css/style.css?v=20261002-12" />
+    <link rel="stylesheet" href="css/responsive.css?v=20261002-10" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -35,7 +35,89 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   </head>
   <body>
-    <div id="authScreen" class="auth-screen">
+    <div id="publicLanding" class="public-landing">
+      <header class="landing-header">
+        <a class="landing-brand" href="#landingHome" aria-label="Futsal Nepal home">
+          <img src="assets/logo.svg" alt="" />
+          <span>FUTSAL <b>NEPAL</b></span>
+        </a>
+        <nav class="landing-nav" id="landingNav" aria-label="Main navigation">
+          <a href="#howItWorks">How it works</a>
+          <a href="#popularGrounds">Explore grounds</a>
+          <a href="#landingFaq">FAQs</a>
+          <a href="#landingContact">Contact</a>
+        </nav>
+        <button class="landing-menu-toggle" type="button" aria-label="Open navigation" aria-controls="landingNav" aria-expanded="false">
+          <i class="fa-solid fa-bars" aria-hidden="true"></i>
+        </button>
+        <button class="btn btn-secondary landing-sign-in" type="button" data-open-login="user">Sign in</button>
+      </header>
+
+      <main>
+        <section class="landing-hero" id="landingHome" aria-labelledby="landingHeroTitle">
+          <img class="landing-hero-image" src="https://images.unsplash.com/photo-1630420598913-44208d36f9af?auto=format&fit=crop&w=1800&q=80" alt="A football pitch ready for a futsal match" fetchpriority="high" />
+          <div class="landing-hero-shade"></div>
+          <div class="landing-hero-content">
+            <p class="landing-eyebrow"><i class="fa-solid fa-futbol"></i> FIND YOUR GAME</p>
+            <h1 id="landingHeroTitle">Your next match<br />starts here.</h1>
+            <p>Discover futsal grounds, check real-time availability, and get your team on the pitch.</p>
+            <div class="landing-hero-actions">
+              <a class="btn btn-primary" href="#landingSearch"><i class="fa-solid fa-magnifying-glass"></i> Find futsal</a>
+              <button class="btn btn-light" type="button" data-open-login="user"><i class="fa-regular fa-calendar-check"></i> Book now</button>
+            </div>
+            <div class="landing-proof"><span><i class="fa-solid fa-location-dot"></i> Grounds across Nepal</span><span><i class="fa-solid fa-clock"></i> Live time-slot availability</span></div>
+          </div>
+          <div class="landing-search" id="landingSearch">
+            <div><strong>Find a pitch for your team</strong><span>Choose a location, budget, or playing style to get started.</span></div>
+            <form id="publicSearchForm">
+              <label><span class="sr-only">City or location</span><i class="fa-solid fa-location-dot"></i><input id="publicSearchLocation" type="search" placeholder="City or location" autocomplete="address-level2" /></label>
+              <label><span class="sr-only">Maximum price per hour</span><i class="fa-solid fa-wallet"></i><select id="publicSearchBudget"><option value="">Any price</option><option value="2000">Up to NPR 2,000/hr</option><option value="2500">Up to NPR 2,500/hr</option><option value="3000">Up to NPR 3,000/hr</option></select></label>
+              <label><span class="sr-only">Ground type</span><i class="fa-solid fa-house"></i><select id="publicSearchType"><option value="">Indoor or outdoor</option><option value="Indoor">Indoor</option><option value="Outdoor">Outdoor</option></select></label>
+              <button class="btn btn-primary" type="submit">Search grounds <i class="fa-solid fa-arrow-right"></i></button>
+            </form>
+          </div>
+        </section>
+
+        <section class="landing-section landing-how" id="howItWorks" aria-labelledby="howItWorksTitle">
+          <div class="landing-section-heading"><p class="landing-eyebrow">EASY AS 1-2-3</p><h2 id="howItWorksTitle">From search to kickoff.</h2><p>Less time organizing. More time playing.</p></div>
+          <div class="landing-steps">
+            <article><span class="landing-step-icon"><i class="fa-solid fa-magnifying-glass"></i></span><span class="landing-step-number">01</span><h3>Find your ground</h3><p>Compare nearby venues, prices, facilities, and player ratings.</p></article>
+            <article><span class="landing-step-icon"><i class="fa-regular fa-calendar-check"></i></span><span class="landing-step-number">02</span><h3>Choose a time</h3><p>Check available slots and pick the court and time that fit your team.</p></article>
+            <article><span class="landing-step-icon"><i class="fa-solid fa-futbol"></i></span><span class="landing-step-number">03</span><h3>Get out and play</h3><p>Send your booking request and keep track of updates from your dashboard.</p></article>
+          </div>
+        </section>
+
+        <section class="landing-featured" id="popularGrounds" aria-labelledby="popularGroundsTitle">
+          <div class="landing-featured-copy"><p class="landing-eyebrow">YOUR NEXT HOME PITCH</p><h2 id="popularGroundsTitle">Great grounds.<br />A better game.</h2><p>Browse popular futsal grounds, compare hourly prices, and read player reviews in one place.</p><button class="btn btn-primary" type="button" data-open-login="user">Explore grounds <i class="fa-solid fa-arrow-right"></i></button></div>
+          <div class="landing-featured-visual" role="img" aria-label="Indoor futsal court with green turf"><span class="landing-rating-chip"><i class="fa-solid fa-star"></i> Player-rated venues</span><span class="landing-visual-caption">Find your team's next favorite pitch.</span></div>
+        </section>
+
+        <section class="landing-section landing-reviews" aria-labelledby="landingReviewsTitle">
+          <div class="landing-review-mark" aria-hidden="true"><i class="fa-solid fa-quote-left"></i></div>
+          <p class="landing-eyebrow">MADE FOR THE LOVE OF THE GAME</p>
+          <h2 id="landingReviewsTitle">Choose with confidence.</h2>
+          <p>See ratings and reviews from players, then find the right ground for your next match.</p>
+          <button class="btn btn-secondary" type="button" data-open-login="user">See player reviews</button>
+        </section>
+
+        <section class="landing-section landing-faq" id="landingFaq" aria-labelledby="landingFaqTitle">
+          <div class="landing-section-heading"><p class="landing-eyebrow">NEED TO KNOW</p><h2 id="landingFaqTitle">A few quick answers.</h2></div>
+          <div class="landing-faq-list">
+            <details><summary>How do I find a futsal ground?</summary><p>Use the search to narrow grounds by location, price, and indoor or outdoor court type. Sign in to see venue details and reviews.</p></details>
+            <details><summary>How do I book a court?</summary><p>Choose a ground, date, and available time slot from your player dashboard, then submit a booking request for the venue to confirm.</p></details>
+            <details><summary>Can I see my booking status?</summary><p>Yes. Your player dashboard shows booking updates and notifications after you sign in.</p></details>
+          </div>
+        </section>
+
+        <section class="landing-contact" id="landingContact" aria-labelledby="landingContactTitle">
+          <div><p class="landing-eyebrow">LET'S GET YOU PLAYING</p><h2 id="landingContactTitle">Ready to find your pitch?</h2><p>Find a ground, bring your team, and make your next match happen.</p></div>
+          <a class="btn btn-light" href="mailto:hello@futsalnepal.com"><i class="fa-regular fa-envelope"></i> Contact us</a>
+        </section>
+      </main>
+      <footer class="landing-footer"><a class="landing-brand" href="#landingHome"><img src="assets/logo.svg" alt="" /><span>FUTSAL <b>NEPAL</b></span></a><span>Book · Play · Connect</span><a href="mailto:hello@futsalnepal.com">hello@futsalnepal.com</a></footer>
+    </div>
+
+    <div id="authScreen" class="auth-screen hidden">
       <div class="auth-card">
         <div class="brand-badge">FUTSAL NEPAL</div>
         <p class="eyebrow">Access portal</p>
@@ -64,6 +146,7 @@
          <span>Don't have an account?</span>
          <button class="auth-link" id="showRegisterBtn" type="button">Create an account</button>
        </p>
+       <button class="auth-link auth-home-link" type="button" data-show-landing><i class="fa-solid fa-arrow-left"></i> Back to home</button>
 
         <form id="registerForm" class="hidden" hidden autocomplete="off">
           <div class="auth-form-heading">
@@ -81,8 +164,12 @@
       </div>
     </div>
     <div id="authLoginLoading" class="auth-login-loading" role="status" aria-live="polite" hidden>
-      <span class="auth-login-spinner" aria-hidden="true"></span>
-      <span>Logging in...</span>
+      <div class="auth-login-panel">
+        <div class="auth-login-brand"><img src="assets/logo.svg" alt="" /><span>FUTSAL NEPAL</span></div>
+        <span class="auth-login-spinner" aria-hidden="true"></span>
+        <span class="auth-login-message">Logging in...</span>
+        <span class="auth-login-subtext">Please wait while we securely prepare your session.</span>
+      </div>
     </div>
 
     <div id="userSection" class="user-section hidden">
@@ -104,6 +191,7 @@
           </nav>
           <div class="user-sidebar-note"><i class="fa-solid fa-circle-check"></i><span>Book your next match in a few clicks.</span></div>
         </aside>
+        <button class="user-sidebar-backdrop" type="button" aria-label="Close navigation" hidden></button>
 
         <main class="user-dashboard-main" id="userDashboardTop">
           <nav class="user-top-nav-bar" aria-label="User sections">
@@ -234,6 +322,15 @@
             <h3>Futsal courts in Nepal</h3>
           </div>
           <div class="user-venue-tools"><label class="user-venue-search"><i class="fa-solid fa-magnifying-glass"></i><input id="userVenueSearch" type="search" placeholder="Search futsal venues" autocomplete="off" /></label><span class="muted" id="userCourtDirectoryCount"></span></div>
+        </div>
+        <div class="court-filter-bar" aria-label="Filter futsal grounds">
+          <label>Location<select id="userVenueLocationFilter"><option value="">All locations</option></select></label>
+          <label>Max price / hour<select id="userVenueMaxPrice"><option value="">Any price</option><option value="2000">NPR 2,000</option><option value="2500">NPR 2,500</option><option value="3000">NPR 3,000</option></select></label>
+          <label>Minimum rating<select id="userVenueMinRating"><option value="">Any rating</option><option value="4.5">4.5 stars</option><option value="4">4 stars</option><option value="3">3 stars</option></select></label>
+          <label>Ground type<select id="userVenueTypeFilter"><option value="">Indoor &amp; outdoor</option><option value="Indoor">Indoor</option><option value="Outdoor">Outdoor</option></select></label>
+          <label>Sort by<select id="userVenueSort"><option value="popular">Top rated</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select></label>
+          <label class="court-availability-filter"><span>Available on</span><input id="userVenueAvailabilityDate" type="date" /></label>
+          <label class="court-availability-toggle"><input id="userVenueAvailableOnly" type="checkbox" /><span>Show only grounds with a free slot</span></label>
         </div>
         <div id="userCourtDirectory" class="user-court-directory"></div>
           </section>
@@ -730,12 +827,12 @@
       }
     </script>
 
-    <script src="js/firebase-config.js?v=20260927-5"></script>
+    <script src="js/firebase-config.js?v=20261002-1"></script>
     <script src="js/firebase-data.js?v=20260927-5"></script>
     <script src="js/components.js"></script>
     <script src="js/install.js?v=20260927-1"></script>
-    <script src="js/auth.js?v=20260927-12"></script>
-    <script src="js/user-portal.js?v=20260927-4"></script>
+    <script src="js/auth.js?v=20261002-5"></script>
+    <script src="js/user-portal.js?v=20261002-3"></script>
     <script src="js/owner-portal.js?v=20260927-2"></script>
     <script src="js/dashboard.js?v=20260927-1"></script>
     <script src="js/courts.js?v=20260927-6"></script>
@@ -750,7 +847,7 @@
     <script src="js/reports.js?v=20260927-1"></script>
     <script src="js/admins.js?v=20260912-2"></script>
     <script src="js/settings.js"></script>
-    <script src="js/app.js?v=20260927-5"></script>
+    <script src="js/app.js?v=20261002-1"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {

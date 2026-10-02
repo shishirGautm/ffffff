@@ -256,7 +256,7 @@ window.FNUserPortal.formatCourtFieldValue = function(value) {
 };
 
 window.FNUserPortal.renderCourtFields = function(court) {
-  return '<details class="court-firebase-details"><summary>All Firebase details</summary><dl>' +
+  return '<details class="court-firebase-details"><summary>More venue details</summary><dl>' +
     Object.entries(court).map(([key, value]) => '<div><dt>' + this.escapeHtml(key) + '</dt><dd>' +
       this.escapeHtml(this.formatCourtFieldValue(value)) + '</dd></div>').join('') +
     '</dl></details>';
@@ -603,7 +603,15 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
   const count = document.getElementById('userCourtDirectoryCount');
   if (!directory || !count) return;
 
-  const query = String(searchTerm || '').trim().toLowerCase();
+  const searchInput = document.getElementById('userVenueSearch');
+  const query = String(searchTerm === undefined && searchInput ? searchInput.value : searchTerm || '').trim().toLowerCase();
+  const locationFilter = document.getElementById('userVenueLocationFilter');
+  const maxPriceFilter = document.getElementById('userVenueMaxPrice');
+  const minRatingFilter = document.getElementById('userVenueMinRating');
+  const typeFilter = document.getElementById('userVenueTypeFilter');
+  const sortFilter = document.getElementById('userVenueSort');
+  const availabilityDate = document.getElementById('userVenueAvailabilityDate');
+  const availableOnly = document.getElementById('userVenueAvailableOnly');
   const state = window.FNAdmin.state || {};
   const allCourts = Array.isArray(state.courts) ? state.courts : [];
   const liveStatus = state.liveCollections && state.liveCollections.courts;
@@ -619,8 +627,39 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
     directory.innerHTML = '<div class="empty-state user-venue-empty"><i class="fa-solid fa-futbol"></i><h3>' + this.escapeHtml(message[0]) + '</h3><p>' + this.escapeHtml(message[1]) + '</p></div>';
     return;
   }
-  const courts = allCourts.filter((court) => !query || [court.name, court.address, court.city, court.district, court.province].filter(Boolean).join(' ').toLowerCase().includes(query));
-  count.textContent = courts.length + ' venues';
+  if (locationFilter) {
+    const selectedLocation = locationFilter.value;
+    const locations = Array.from(new Set(allCourts.filter((court) => court.status === 'active').map((court) => court.city).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    locationFilter.innerHTML = '<option value="">All locations</option>' + locations.map((location) => '<option value="' + this.escapeHtml(location) + '">' + this.escapeHtml(location) + '</option>').join('');
+    locationFilter.value = locations.includes(selectedLocation) ? selectedLocation : '';
+  }
+  const location = locationFilter ? locationFilter.value.toLowerCase() : '';
+  const maxPrice = maxPriceFilter ? Number(maxPriceFilter.value) : 0;
+  const minRating = minRatingFilter ? Number(minRatingFilter.value) : 0;
+  const type = typeFilter ? typeFilter.value.toLowerCase() : '';
+  const checkAvailability = !!(availableOnly && availableOnly.checked);
+  const date = availabilityDate ? availabilityDate.value : '';
+  if (checkAvailability && !window.FNAdmin.demoMode && window.FNAdminData && window.FNAdminData.isLive() && state.bookingSlotsLoadedDate !== date) {
+    const failed = state.bookingSlotsErrorDate === date;
+    count.textContent = failed ? 'Unavailable' : 'Checking availability…';
+    directory.innerHTML = '<div class="empty-state user-venue-empty" role="status"><i class="fa-solid fa-' + (failed ? 'triangle-exclamation' : 'spinner fa-spin') + '"></i><h3>' + (failed ? 'Live availability unavailable' : 'Checking live availability') + '</h3><p>' + (failed ? 'Current slot availability could not be loaded. Try changing the date or reload the page.' : 'Checking current reservations for this date…') + '</p></div>';
+    return;
+  }
+  let courts = allCourts.filter((court) => {
+    if (court.status !== 'active') return false;
+    const searchableText = [court.name, court.address, court.city, court.district, court.province].filter(Boolean).join(' ').toLowerCase();
+    if (query && !searchableText.includes(query)) return false;
+    if (location && String(court.city || '').toLowerCase() !== location) return false;
+    if (maxPrice && Number(court.pricePerHour || 0) > maxPrice) return false;
+    const rating = this.getCourtAverageRating(court);
+    if (minRating && rating < minRating) return false;
+    if (type && String(court.type || 'Indoor').toLowerCase() !== type) return false;
+    return !checkAvailability || (date && this.hasCourtAvailability(court, date));
+  });
+  if (sortFilter && sortFilter.value === 'price-asc') courts.sort((a, b) => Number(a.pricePerHour || 0) - Number(b.pricePerHour || 0));
+  else if (sortFilter && sortFilter.value === 'price-desc') courts.sort((a, b) => Number(b.pricePerHour || 0) - Number(a.pricePerHour || 0));
+  else courts.sort((a, b) => this.getCourtAverageRating(b) - this.getCourtAverageRating(a) || Number(b.bookings || 0) - Number(a.bookings || 0));
+  count.textContent = courts.length + ' of ' + allCourts.filter((court) => court.status === 'active').length + ' grounds';
   directory.innerHTML = courts.length ? courts.map((court) => {
     const location = [court.address, court.city, court.district, court.province, 'Nepal'].filter(Boolean).join(', ');
     const mapLocation = [court.name, location].filter(Boolean).join(', ');
@@ -628,15 +667,23 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
     const mapEmbedUrl = 'https://www.google.com/maps?q=' + encodeURIComponent(mapLocation) + '&output=embed';
     const imageUrl = (court.images && court.images[0]) || 'https://images.unsplash.com/photo-1630420598913-44208d36f9af?auto=format&fit=crop&w=640&q=80';
     const reviews = this.getCourtReviews(court.name);
-    const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length : Number(court.rating || 0);
+    const averageRating = this.getCourtAverageRating(court);
     const ratingDisplay = averageRating ? '<span class="court-rating"><i class="fa-solid fa-star"></i> ' + averageRating.toFixed(1) + '</span><span class="court-review-count">' + reviews.length + ' review' + (reviews.length === 1 ? '' : 's') + '</span>' : '<span class="court-review-count">No reviews yet</span>';
     const courtId = this.escapeHtml(court.id);
     const courtName = this.escapeHtml(court.name || 'Futsal court');
-    const bookingAction = court.status === 'active' ? '<button class="btn btn-primary user-court-book" data-court-id="' + courtId + '" type="button">Book now</button>' : '<span class="court-status inactive">Currently unavailable</span>';
+    const bookingAction = '<button class="btn btn-primary user-court-book" data-court-id="' + courtId + '" type="button">Book now</button>';
     const amenities = [['parking', 'Parking'], ['washroom', 'Washroom'], ['changingRoom', 'Changing room'], ['shower', 'Shower'], ['lighting', 'Lights']].filter(([key]) => court[key]).map(([, label]) => '<span>' + label + '</span>').join('');
     const contact = court.contactNumber ? '<a href="tel:' + this.escapeHtml(court.contactNumber) + '"><i class="fa-solid fa-phone"></i> ' + this.escapeHtml(court.contactNumber) + '</a>' : '<span>Contact not available</span>';
-    return '<article class="user-court-card"><img class="court-card-image" src="' + this.escapeHtml(imageUrl) + '" alt="' + courtName + '" /><div class="court-card-title"><h4>' + courtName + '</h4><div class="court-rating-summary">' + ratingDisplay + '</div></div><p class="user-court-address"><i class="fa-solid fa-location-dot"></i> ' + this.escapeHtml(location) + '</p><div class="court-meta"><span class="court-price">NPR ' + Number(court.pricePerHour || 0).toLocaleString() + '/hr</span><span>' + this.escapeHtml((court.openingTime || '08:00') + ' - ' + (court.closingTime || '22:00')) + '</span></div><div class="user-court-specs"><span><strong>Type</strong>' + this.escapeHtml(court.type || 'Indoor') + '</span><span><strong>Turf</strong>' + this.escapeHtml(court.turfType || 'Artificial') + '</span></div><div class="user-court-map"><div class="user-court-map-heading"><strong>' + courtName + '</strong><span>Live location</span></div><iframe src="' + this.escapeHtml(mapEmbedUrl) + '" title="Live map for ' + courtName + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div><div class="user-court-contact">' + contact + '</div>' + (amenities ? '<div class="user-court-amenities">' + amenities + '</div>' : '') + (court.description ? '<p class="user-court-description">' + this.escapeHtml(court.description) + '</p>' : '') + this.renderCourtFields(court) + '<div class="court-actions">' + bookingAction + '<button class="court-reviews-link" type="button" data-court-reviews="' + courtId + '"><i class="fa-regular fa-star"></i> View reviews</button><a class="court-map-link" href="' + this.escapeHtml(mapUrl) + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + courtName + ' map</a></div></article>';
-  }).join('') : '<div class="empty-state user-venue-empty"><i class="fa-solid fa-magnifying-glass"></i><h3>No venues found</h3><p>Try a different futsal name or location.</p></div>';
+    return '<article class="user-court-card"><img class="court-card-image" src="' + this.escapeHtml(imageUrl) + '" alt="' + courtName + '" loading="lazy" decoding="async" /><div class="court-card-title"><h4>' + courtName + '</h4><div class="court-rating-summary">' + ratingDisplay + '</div></div><p class="user-court-address"><i class="fa-solid fa-location-dot"></i> ' + this.escapeHtml(location) + '</p><div class="court-meta"><span class="court-price">NPR ' + Number(court.pricePerHour || 0).toLocaleString() + '/hr</span><span>' + this.escapeHtml((court.openingTime || '08:00') + ' - ' + (court.closingTime || '22:00')) + '</span></div><div class="user-court-specs"><span><strong>Type</strong>' + this.escapeHtml(court.type || 'Indoor') + '</span><span><strong>Turf</strong>' + this.escapeHtml(court.turfType || 'Artificial') + '</span></div><details class="user-court-map"><summary class="user-court-map-heading"><strong>View map</strong><span>Directions</span></summary><iframe src="' + this.escapeHtml(mapEmbedUrl) + '" title="Live map for ' + courtName + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></details><div class="user-court-contact">' + contact + '</div>' + (amenities ? '<div class="user-court-amenities">' + amenities + '</div>' : '') + (court.description ? '<p class="user-court-description">' + this.escapeHtml(court.description) + '</p>' : '') + this.renderCourtFields(court) + '<div class="court-actions">' + bookingAction + '<button class="court-reviews-link" type="button" data-court-reviews="' + courtId + '"><i class="fa-regular fa-star"></i> View reviews</button><a class="court-map-link" href="' + this.escapeHtml(mapUrl) + '" target="_blank" rel="noopener"><i class="fa-solid fa-map-location-dot"></i> Open ' + courtName + ' map</a></div></article>';
+  }).join('') : '<div class="empty-state user-venue-empty"><i class="fa-solid fa-magnifying-glass"></i><h3>No grounds match these filters</h3><p>Try a different location, price range, rating, ground type, or date.</p><button class="btn btn-secondary user-venue-reset" type="button">Clear filters</button></div>';
+
+  const resetButton = directory.querySelector('.user-venue-reset');
+  if (resetButton) resetButton.addEventListener('click', () => {
+    if (searchInput) searchInput.value = '';
+    [locationFilter, maxPriceFilter, minRatingFilter, typeFilter].forEach((filter) => { if (filter) filter.value = ''; });
+    if (availableOnly) availableOnly.checked = false;
+    this.renderCourtDirectory();
+  });
 
   directory.querySelectorAll('.user-court-book').forEach((button) => {
     button.addEventListener('click', () => {
@@ -658,6 +705,37 @@ window.FNUserPortal.renderCourtDirectory = function(searchTerm) {
   });
 };
 
+window.FNUserPortal.getCourtAverageRating = function(court) {
+  const reviews = this.getCourtReviews(court.name);
+  const ratings = reviews.map((review) => Number(review.rating)).filter(Number.isFinite);
+  if (ratings.length) return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+  const courtRating = Number(court.rating || 0);
+  return Number.isFinite(courtRating) ? courtRating : 0;
+};
+
+window.FNUserPortal.hasCourtAvailability = function(court, date) {
+  const openingMinutes = this.toMinutes(court.openingTime || '06:00');
+  const closingMinutes = this.toMinutes(court.closingTime || '22:00');
+  const slotDuration = Number(court.slotDuration || 60);
+  if (!Number.isFinite(openingMinutes) || !Number.isFinite(closingMinutes) || !Number.isFinite(slotDuration) || slotDuration <= 0 || closingMinutes <= openingMinutes) return false;
+  const blockedSlots = Array.isArray(court.blockedSlots) ? court.blockedSlots : [];
+  const reservations = [...(window.FNAdmin.state.bookings || []), ...(window.FNAdmin.state.bookingSlots || [])];
+
+  for (let start = openingMinutes; start + slotDuration <= closingMinutes; start += slotDuration) {
+    const startTime = this.toTime(start);
+    const endTime = this.toTime(start + slotDuration);
+    if (blockedSlots.includes(date + ' | ' + startTime + ' - ' + endTime)) continue;
+    if (window.FNAdmin.isBookingTimeExpired({ date, startTime, endTime })) continue;
+    const occupied = reservations.some((booking) => window.FNAdmin.isBookingActive(booking)
+      && booking.date === date
+      && ((booking.courtId && booking.courtId === court.id) || booking.court === court.name)
+      && start < this.toMinutes(booking.endTime)
+      && this.toMinutes(booking.startTime) < start + slotDuration);
+    if (!occupied) return true;
+  }
+  return false;
+};
+
 window.FNUserPortal.init = function() {
   const courtSelect = document.getElementById('userBookingCourt');
   const form = document.getElementById('userBookingForm');
@@ -670,6 +748,17 @@ window.FNUserPortal.init = function() {
   const userMain = document.getElementById('userDashboardTop');
   const userSidebar = document.querySelector('.user-sidebar');
   const userMobileMenu = document.getElementById('userMobileMenuBtn');
+  const userSidebarBackdrop = document.querySelector('.user-sidebar-backdrop');
+  const setUserNavigationOpen = (isOpen) => {
+    if (userSidebar) userSidebar.classList.toggle('open', isOpen);
+    if (userMain) userMain.closest('.user-dashboard-shell')?.classList.toggle('user-nav-open', isOpen);
+    if (userSidebarBackdrop) userSidebarBackdrop.hidden = !isOpen;
+    if (userMobileMenu) {
+      userMobileMenu.setAttribute('aria-expanded', String(isOpen));
+      userMobileMenu.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
+      userMobileMenu.innerHTML = '<i class="fa-solid fa-' + (isOpen ? 'xmark' : 'bars') + '"></i>';
+    }
+  };
   const backToTopButton = document.getElementById('userBackToTop');
   if (backToTopButton && backToTopButton.dataset.fnInitialized !== 'true') {
     const updateBackToTopVisibility = () => backToTopButton.classList.toggle('is-visible', window.scrollY > 360);
@@ -680,12 +769,19 @@ window.FNUserPortal.init = function() {
   }
   if (userMobileMenu && userSidebar && userMobileMenu.dataset.fnInitialized !== 'true') {
     userMobileMenu.addEventListener('click', () => {
-      const isOpen = userSidebar.classList.toggle('open');
-      userMobileMenu.setAttribute('aria-expanded', String(isOpen));
-      userMobileMenu.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
-      userMobileMenu.innerHTML = '<i class="fa-solid fa-' + (isOpen ? 'xmark' : 'bars') + '"></i>';
+      setUserNavigationOpen(!userSidebar.classList.contains('open'));
     });
     userMobileMenu.dataset.fnInitialized = 'true';
+  }
+  if (userSidebarBackdrop && userSidebarBackdrop.dataset.fnInitialized !== 'true') {
+    userSidebarBackdrop.addEventListener('click', () => setUserNavigationOpen(false));
+    userSidebarBackdrop.dataset.fnInitialized = 'true';
+  }
+  if (userSidebar && userSidebar.dataset.fnEscapeInitialized !== 'true') {
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && userSidebar.classList.contains('open')) setUserNavigationOpen(false);
+    });
+    userSidebar.dataset.fnEscapeInitialized = 'true';
   }
   const userNotificationsPanel = document.getElementById('userNotificationsPanel');
   const userHero = userMain && userMain.querySelector('.portal-hero');
@@ -764,24 +860,14 @@ window.FNUserPortal.init = function() {
       if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       document.querySelectorAll('[data-user-scroll]').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
-      if (userSidebar) userSidebar.classList.remove('open');
-      if (userMobileMenu) {
-        userMobileMenu.setAttribute('aria-expanded', 'false');
-        userMobileMenu.setAttribute('aria-label', 'Open navigation');
-        userMobileMenu.innerHTML = '<i class="fa-solid fa-bars"></i>';
-      }
+      setUserNavigationOpen(false);
     });
     button.dataset.fnInitialized = 'true';
   });
   document.querySelectorAll('[data-user-action="close-nav"]').forEach((button) => {
     if (button.dataset.fnInitialized === 'true') return;
     button.addEventListener('click', () => {
-      if (userSidebar) userSidebar.classList.remove('open');
-      if (userMobileMenu) {
-        userMobileMenu.setAttribute('aria-expanded', 'false');
-        userMobileMenu.setAttribute('aria-label', 'Open navigation');
-        userMobileMenu.innerHTML = '<i class="fa-solid fa-bars"></i>';
-      }
+      setUserNavigationOpen(false);
     });
     button.dataset.fnInitialized = 'true';
   });
@@ -803,6 +889,25 @@ window.FNUserPortal.init = function() {
     courtSelect.appendChild(option);
   });
 
+  const today = window.FNAdmin.getNepalDateTime().date;
+  dateInput.min = today;
+  if (!dateInput.value || dateInput.value < today) dateInput.value = today;
+  const venueAvailabilityDate = document.getElementById('userVenueAvailabilityDate');
+  const availabilityCheckbox = document.getElementById('userVenueAvailableOnly');
+  if (venueAvailabilityDate) {
+    venueAvailabilityDate.min = today;
+    if (!venueAvailabilityDate.value || venueAvailabilityDate.value < today) venueAvailabilityDate.value = today;
+  }
+  const pendingFilters = this.pendingSearchFilters;
+  if (pendingFilters) {
+    if (venueSearch) venueSearch.value = pendingFilters.search || '';
+    const pendingBudget = document.getElementById('userVenueMaxPrice');
+    const pendingType = document.getElementById('userVenueTypeFilter');
+    if (pendingBudget) pendingBudget.value = pendingFilters.maxPrice || '';
+    if (pendingType) pendingType.value = pendingFilters.type || '';
+    this.pendingSearchFilters = null;
+  }
+
   if (courtSelect.dataset.fnInitialized === 'true') {
     this.subscribeToSelectedSlot();
     this.updateTimeSlots();
@@ -816,9 +921,6 @@ window.FNUserPortal.init = function() {
     return;
   }
 
-  const today = window.FNAdmin.getNepalDateTime().date;
-  dateInput.min = today;
-  dateInput.value = today;
   this.subscribeToSelectedSlot();
   this.updateTimeSlots();
   courtSelect.addEventListener('change', () => {
@@ -860,6 +962,29 @@ window.FNUserPortal.init = function() {
     this.subscribeToSelectedSlot();
     this.updateTimeSlots();
     this.updateAmount();
+  });
+  [
+    'userVenueLocationFilter',
+    'userVenueMaxPrice',
+    'userVenueMinRating',
+    'userVenueTypeFilter',
+    'userVenueSort'
+  ].forEach((id) => {
+    const filter = document.getElementById(id);
+    if (filter) filter.addEventListener('change', () => this.renderCourtDirectory());
+  });
+  if (venueAvailabilityDate) {
+    venueAvailabilityDate.addEventListener('change', () => {
+      const date = venueAvailabilityDate.value;
+      if (availabilityCheckbox && availabilityCheckbox.checked && date) window.FNAdmin.subscribeToBookingSlots('', date);
+      this.renderCourtDirectory();
+    });
+  }
+  if (availabilityCheckbox) availabilityCheckbox.addEventListener('change', () => {
+    if (availabilityCheckbox.checked && venueAvailabilityDate && venueAvailabilityDate.value) {
+      window.FNAdmin.subscribeToBookingSlots('', venueAvailabilityDate.value);
+    }
+    this.renderCourtDirectory();
   });
   this.updateAmount();
   this.renderCourtDirectory();
