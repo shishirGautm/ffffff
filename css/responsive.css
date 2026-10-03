@@ -372,9 +372,10 @@
 }
 
 @media (max-width: 1100px) {
-  .landing-search { grid-template-columns: 1fr; gap: 14px; }
+  .landing-search { grid-template-columns: 1fr; gap: 16px; padding: 22px; }
+  .landing-search > div span { max-width: 520px; }
   .landing-search form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .landing-search form .btn { grid-column: 1 / -1; }
+  .landing-search form .btn { grid-column: 1 / -1; justify-self: stretch; }
   .landing-featured { gap: 30px; }
   .court-filter-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -389,12 +390,12 @@
   .landing-header.is-menu-open .landing-nav { display: grid; }
   .landing-nav a { padding: 13px 12px; border-radius: 8px; color: rgba(255,255,255,0.9); font-size: 0.88rem; }
   .landing-nav a:hover,.landing-nav a:focus-visible { color: #fff; background: rgba(255,255,255,0.1); }
-  .landing-hero { min-height: 680px; padding: 112px 24px 174px; }
+  .landing-hero { min-height: 0; align-items: stretch; flex-direction: column; padding: 112px 24px 28px; }
   .landing-hero h1 { font-size: clamp(3rem, 11vw, 5rem); }
-  .landing-search { right: 18px; bottom: -100px; left: 18px; padding: 18px; }
+  .landing-search { position: relative; inset: auto; width: 100%; max-width: 680px; margin: 34px auto 0; padding: 20px; }
   .landing-search form { grid-template-columns: 1fr 1fr; }
   .landing-search form .btn { grid-column: 1 / -1; }
-  .landing-how { padding-top: 165px; }
+  .landing-how { padding-top: 76px; }
   .landing-section { padding-right: 24px; padding-left: 24px; }
   .landing-steps { grid-template-columns: 1fr; gap: 12px; }
   .landing-steps article { min-height: 0; padding: 20px; }
@@ -403,7 +404,10 @@
   .landing-featured-visual { min-height: 280px; }
   .landing-faq { grid-template-columns: 1fr; gap: 26px; }
   .landing-faq .landing-section-heading { margin: 0; }
-  .landing-contact { align-items: flex-start; flex-direction: column; padding: 34px 24px; }
+  .landing-contact { align-items: stretch; justify-content: flex-start; flex-direction: column; gap: 18px; padding: 30px 24px; }
+  .landing-contact > div:first-child { flex: 0 1 auto; }
+  .landing-contact-details { flex: 0 1 auto; width: 100%; max-width: 420px; padding: 14px; }
+  .landing-contact-details a { overflow-wrap: anywhere; }
   .landing-footer { flex-wrap: wrap; padding: 20px 24px; }
   .court-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .court-availability-filter,.court-availability-toggle { grid-column: 1 / -1; }
@@ -415,16 +419,17 @@
   .landing-header .landing-brand img { width: 34px; height: 34px; }
   .landing-menu-toggle { flex: 0 0 40px; width: 40px; height: 40px; margin-left: 2px; }
   .landing-sign-in { min-height: 38px; padding: 0 12px; }
-  .landing-hero { min-height: 720px; padding: 144px 20px 200px; }
+  .landing-hero { padding: 104px 20px 24px; }
   .landing-hero-content > p:not(.landing-eyebrow) { font-size: 0.94rem; }
   .landing-hero-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .landing-hero-actions .btn { min-height: 48px; padding: 0 11px; font-size: 0.77rem; }
   .landing-proof { gap: 9px 15px; font-size: 0.69rem; }
-  .landing-search { right: 12px; bottom: -128px; left: 12px; gap: 12px; padding: 15px; border-radius: 14px; }
-  .landing-search > div strong { font-size: 0.91rem; }
+  .landing-search { gap: 15px; margin-top: 28px; padding: 17px; border-radius: 16px; }
+  .landing-search > div strong { font-size: 0.98rem; }
   .landing-search form { grid-template-columns: 1fr; }
-  .landing-search form label,.landing-search form .btn { min-height: 43px; }
-  .landing-how { padding-top: 190px; }
+  .landing-search form label { min-height: 48px; }
+  .landing-search form .btn { min-height: 48px; }
+  .landing-how { padding-top: 60px; }
   .landing-section { padding-right: 20px; padding-left: 20px; }
   .landing-section-heading { margin-bottom: 30px; }
   .landing-featured { padding-right: 20px; padding-left: 20px; }
@@ -432,7 +437,12 @@
   .landing-rating-chip { top: 12px; right: 12px; font-size: 0.67rem; }
   .landing-visual-caption { right: 17px; bottom: 17px; left: 17px; font-size: 1.15rem; }
   .landing-contact { padding-right: 20px; padding-left: 20px; }
+  .landing-contact { gap: 16px; padding-top: 26px; padding-bottom: 26px; }
+  .landing-contact-details { padding: 12px; }
+  .landing-contact-details .btn-light { gap: 8px; padding-right: 9px; padding-left: 9px; font-size: 0.73rem; }
+  .landing-contact-details i { flex-basis: 24px; width: 24px; height: 24px; }
   .landing-footer { align-items: flex-start; flex-direction: column; }
+  .landing-footer-credit { width: 100%; text-align: left; }
   .court-filter-bar { grid-template-columns: 1fr; }
   .court-availability-filter,.court-availability-toggle { grid-column: 1; }
   .court-availability-toggle { min-height: 44px; }
